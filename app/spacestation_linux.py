@@ -130,6 +130,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(self._build_sticks_tab(), "Sticks & triggers")
         tabs.addTab(self._build_lighting_tab(), "Lighting")
         tabs.addTab(self._build_rumble_tab(), "Rumble")
+        tabs.addTab(self._build_mode_tab(), "Mode")
         tabs.addTab(self._build_firmware_tab(), "Firmware")
         self.setCentralWidget(tabs)
 
@@ -343,6 +344,34 @@ class MainWindow(QMainWindow):
         mrow.addStretch()
         layout.addWidget(box)
         layout.addLayout(mrow)
+        layout.addStretch()
+        return w
+
+    def _build_mode_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.addWidget(QLabel("<b>Input protocol (firmware combos)</b>"))
+        layout.addWidget(
+            QLabel(
+                "This Linux stack only supports <b>PC / DInput</b> (blue status LED, "
+                "USB ID 04b4:2412). Mode changes are done on the pad — they re-enumerate USB."
+            )
+        )
+        box = QGroupBox("Hold until the status LED changes")
+        form = QFormLayout(box)
+        form.addRow("DInput (blue)", QLabel("FN ◯ + A"))
+        form.addRow("XInput (white)", QLabel("FN ◯ + X  — becomes Xbox-like; leave this stack"))
+        form.addRow("Gyro-mouse toggle", QLabel("FN ◯  (DInput only; firmware feature)"))
+        form.addRow("Onboard profiles", QLabel("SELECT + A/B/X/Y"))
+        form.addRow("Rear switch", QLabel("Dongle / Bluetooth / NS / Mobile"))
+        layout.addWidget(box)
+        tip = QLabel(
+            "Bluetooth DInput is stubbed — pair the pad, run "
+            "`python3 driver/flydigi_vader4d.py --list`, and capture hidraw IDs "
+            "(see docs/bluetooth.md)."
+        )
+        tip.setWordWrap(True)
+        layout.addWidget(tip)
         layout.addStretch()
         return w
 
