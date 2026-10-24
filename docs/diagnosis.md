@@ -62,6 +62,10 @@ This matches SDL’s `HIDAPI_DriverFlydigi_HandlePacketV1` gate (`data[0]==0x04 
 
 Apps that open the **joystick** from IF0 miss paddles/C/Z/gyro as a coherent device. Apps that need the Windows DInput extended report must open **hidraw IF2** (or a userspace/kernel driver that republishes it). Steam’s workaround (udev `uaccess` + Steam Input) is deliberately **out of scope** for this project.
 
+## Bluetooth DInput (blue)
+
+BT presents a standard HID Game Pad (`d7d7:0041`) plus Consumer Control extras (Z=`KEY_ENTER`, M-pads as media keys). That path is **input-capable** once remapped; LED / rumble / onboard profiles still need IF2 over **dongle or USB** — same limit as official Space Station. Details: [bluetooth.md](bluetooth.md).
+
 ## Evidence files
 
 - `captures/dongle-host-full.txt`, `captures/lsusb-v.txt`

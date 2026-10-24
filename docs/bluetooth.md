@@ -15,9 +15,9 @@
 | Extra GATT | Nordic UART (`6e400001-…`), vendor `00010203-…` (config TBD) |
 | Captures | `captures/bt-dinput-blue-20261024/` |
 
-`flydigi-vader4d` treats this as transport `bt`: bridges the kernel `Flydigi VADER4P` evdev node into a clean uinput **Flydigi Vader 4 Pro** (`d7d7:0041`). USB IF2 commands (LED/config/cmd 236) are **not** on this HID collection — those stay dongle/wired until NUS/vendor GATT is reverse-engineered.
+`flydigi-vader4d` treats this as transport `bt`: bridges the kernel `Flydigi VADER4P` node into clean uinput (`d7d7:0041`) using `flydigi/bt_button_map.json`.
 
-M1–M4 / full IMU are likely USB-IF2-only; BT HID exposes face buttons, sticks, triggers, hat, and (via TL2/TR2) C/Z stand-ins.
+**Official Space Station also cannot configure the pad over Bluetooth** — LED / rumble / profiles need the **2.4G dongle or USB-C**. Nordic UART is present on GATT but unused for companion parity for now.
 
 ### Connect tips
 

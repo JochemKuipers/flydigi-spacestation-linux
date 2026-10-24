@@ -122,6 +122,7 @@ class MainWindow(QMainWindow):
         self.resize(980, 700)
         self._color = QColor(0, 200, 80)
         self._config: dict | None = None
+        self._transport: str = "unknown"
 
         tabs = QTabWidget()
         tabs.addTab(self._build_device_tab(), "Device")
@@ -155,6 +156,17 @@ class MainWindow(QMainWindow):
         if not resp.get("ok"):
             QMessageBox.warning(self, "Command failed", resp.get("error", "unknown"))
         return resp
+
+    def _require_usb_config(self) -> bool:
+        if self._transport == "bluetooth":
+            QMessageBox.information(
+                self,
+                "USB / dongle required",
+                "LED, rumble, and onboard profiles need the 2.4G dongle or USB-C.\n"
+                "Bluetooth DInput is input-only (same as official Space Station).",
+            )
+            return False
+        return True
 
     def _build_device_tab(self) -> QWidget:
         w = QWidget()
@@ -437,13 +449,25 @@ class MainWindow(QMainWindow):
 
     @Slot(dict)
     def _on_info(self, info: dict) -> None:
-        self.info_box.setPlainText(
-            f"device_id = {info.get('device_id')}\n"
-            f"firmware  = {info.get('firmware')}\n"
-            f"battery   = {info.get('battery')}% (raw {info.get('battery_raw')})\n"
-            f"cpu/conn/motion = {info.get('cpu_type')}/{info.get('connection_type')}/{info.get('motion_sensor_type')}\n"
-            f"mac       = {info.get('mac')}"
-        )
+        transport = info.get("transport") or info.get("connection_type") or ""
+        if transport == "bluetooth" or info.get("hid", "").startswith("d7d7"):
+            self._transport = "bluetooth"
+        else:
+            self._transport = "usb"
+        lines = [
+            f"transport = {self._transport}",
+            f"device_id = {info.get('device_id')}",
+            f"firmware  = {info.get('firmware')}",
+            f"battery   = {info.get('battery')}% (raw {info.get('battery_raw')})",
+            f"cpu/conn/motion = {info.get('cpu_type')}/{info.get('connection_type')}/{info.get('motion_sensor_type')}",
+            f"mac       = {info.get('mac')}",
+            f"hid       = {info.get('hid')}",
+            f"name      = {info.get('name')}",
+        ]
+        if self._transport == "bluetooth":
+            lines.append("")
+            lines.append("BT DInput: input only — use dongle/USB for LED, rumble, profiles.")
+        self.info_box.setPlainText("\n".join(lines))
 
     @Slot(dict)
     def _on_report(self, rep: dict) -> None:
@@ -456,6 +480,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _load_config(self) -> None:
+        if not self._require_usb_config():
+            return
         resp = self._rpc("config_get")
         if not resp.get("ok"):
             return
@@ -502,6 +528,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _apply_keys(self) -> None:
+        if not self._require_usb_config():
+            return
         keys = []
         for row in range(self.key_table.rowCount()):
             kid = self.key_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
@@ -519,6 +547,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _load_sticks(self) -> None:
+        if not self._require_usb_config():
+            return
         resp = self._rpc("config_get")
         if resp.get("ok"):
             self._config = resp["config"]
@@ -526,6 +556,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _apply_sticks(self) -> None:
+        if not self._require_usb_config():
+            return
         self._rpc(
             "config_set_sticks",
             left_stick={"zero": self.dz_left.value()},
@@ -536,6 +568,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _led_get(self) -> None:
+        if not self._require_usb_config():
+            return
         resp = self._rpc("led_get")
         if not resp.get("ok"):
             return
@@ -550,6 +584,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _led_set(self) -> None:
+        if not self._require_usb_config():
+            return
         self._rpc(
             "led_set",
             mode=int(self.led_mode.currentData()),
@@ -562,6 +598,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _rumble_test(self) -> None:
+        if not self._require_usb_config():
+            return
         self._rpc("rumble", low=self.rumble_lo.value(), high=self.rumble_hi.value())
         from PySide6.QtCore import QTimer
 
@@ -569,6 +607,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _load_motor(self) -> None:
+        if not self._require_usb_config():
+            return
         resp = self._rpc("config_get")
         if resp.get("ok"):
             self._config = resp["config"]
@@ -576,6 +616,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _apply_motor(self) -> None:
+        if not self._require_usb_config():
+            return
         self._rpc(
             "config_set_motor",
             main_switch=self.motor_on.isChecked(),

@@ -113,6 +113,8 @@ def _info_dict(info: DeviceInfo) -> dict[str, Any]:
         "connection_type": info.connection_type,
         "motion_sensor_type": info.motion_sensor_type,
         "mac": info.device_mac.hex(),
+        "transport": "usb",
+        "hid": "04b4:2412",
     }
 
 
@@ -254,7 +256,9 @@ class Daemon:
 
     def _require_dev(self) -> DInputDevice:
         if self.mode != "usb" or self.dev is None:
-            raise RuntimeError("USB IF2 command path not available over BT DInput yet")
+            raise RuntimeError(
+                "LED/config/rumble need dongle or USB — BT DInput is input-only"
+            )
         return self.dev
 
     def _on_sideband(self, msg: object) -> None:
@@ -283,7 +287,10 @@ class Daemon:
 
     def _cmd_rumble(self, msg: dict[str, Any]) -> dict[str, Any]:
         if self.mode == "bt":
-            return {"ok": False, "error": "rumble over BT DInput not wired yet"}
+            return {
+                "ok": False,
+                "error": "rumble needs dongle or USB — BT DInput is input-only",
+            }
         low = int(msg.get("low", 0))
         high = int(msg.get("high", 0))
         self._require_dev().rumble(low, high)

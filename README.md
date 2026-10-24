@@ -13,8 +13,10 @@ Native Linux support for the Flydigi Vader 4 Pro **without** Xbox/XInput spoofin
 | `flydigi-vader4d` (uinput + socket) | Implemented |
 | Space Station Linux GUI | Profiles / sticks / lighting / rumble (firmware gated) |
 | Firmware updater | Locked until DFU RE completes |
-| Bluetooth DInput (blue) | `d7d7:0041` VADER4P — evdev bridge in daemon ([docs/bluetooth.md](docs/bluetooth.md)) |
+| Bluetooth DInput (blue) | Input working — calibrated map ([docs/bluetooth.md](docs/bluetooth.md)) |
 | Bluetooth XInput (white) | Xbox `045e:02e0` spoof — out of scope |
+
+**Feature matrix:** full LED / rumble / onboard config = **dongle or USB**. BT DInput is input-only (same limit as official Space Station).
 
 ## Requirements
 
@@ -22,7 +24,7 @@ Native Linux support for the Flydigi Vader 4 Pro **without** Xbox/XInput spoofin
 - Python 3.11+ with `python-evdev` (`pacman -S python-evdev`)
 - GUI: `pacman -S pyside6`
 - Controller in **PC/DInput** mode (blue LED)
-- Dongle or wired USB `04b4:2412`
+- Dongle or wired USB `04b4:2412` (for config/LED/rumble), and/or BT `d7d7:0041`
 
 ## Quick start
 
@@ -42,17 +44,18 @@ python3 app/flydigi_ctl.py led-set --r 0 --g 255 --b 0 --brightness 80
 python3 app/spacestation_linux.py
 ```
 
-The daemon creates a uinput device named **Flydigi Vader 4 Pro** (VID/PID stay `04b4:2412`) and listens on `$XDG_RUNTIME_DIR/flydigi-vader4d.sock`.
+The daemon creates a uinput device named **Flydigi Vader 4 Pro** and listens on `$XDG_RUNTIME_DIR/flydigi-vader4d.sock` (USB keeps `04b4:2412`; BT publishes `d7d7:0041`).
 
 ## Architecture
 
 ```
-USB IF2 hidraw ──► flydigi-vader4d ──► uinput (games)
-                       │
-                       └── Unix socket ──► spacestation_linux / flydigi_ctl
+USB IF2 hidraw  ─┐
+                 ├──► flydigi-vader4d ──► uinput (games)
+BT VADER4P evdev─┘         │
+                           └── Unix socket ──► spacestation_linux / flydigi_ctl
 ```
 
-IF2 is exclusive: only the daemon opens it. The GUI never fights the driver for hidraw.
+USB IF2 is exclusive to the daemon. On BT the daemon grabs `Flydigi VADER4P` so `KEY_ENTER` (Z) does not type into the desktop.
 
 ## Docs
 
