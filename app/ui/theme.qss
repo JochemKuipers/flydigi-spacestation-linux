@@ -289,3 +289,92 @@ QStatusBar {
   color: #9a958c;
   border-top: 1px solid #2c303a;
 }
+
+/* manual */
+QListWidget#ManualNav {
+  background-color: #1a1c22;
+  border: 1px solid #343842;
+  border-radius: 12px;
+  outline: none;
+  padding: 8px 6px;
+}
+
+QListWidget#ManualNav::item {
+  color: #9a958c;
+  padding: 10px 12px;
+  margin: 2px 2px;
+  border-radius: 8px;
+}
+
+QListWidget#ManualNav::item:selected {
+  background-color: #2a3142;
+  color: #f2f0eb;
+  font-weight: 600;
+}
+
+QListWidget#ManualNav::item:hover:!selected {
+  background-color: #22252e;
+  color: #f2f0eb;
+}
+
+QLabel#ManualHeading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f2f0eb;
+  padding-top: 4px;
+}
+
+QLabel#ManualBody {
+  color: #d4d0c8;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+QLabel#ManualKey {
+  color: #9a958c;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 110px;
+}
+
+QLabel#ManualCardTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f2f0eb;
+}
+
+QLabel#ManualNoteTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e8a45a;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+QFrame#ManualCard {
+  background-color: #1e2128;
+  border: 1px solid #343842;
+  border-radius: 12px;
+}
+
+QFrame#ManualNote {
+  background-color: #2a241c;
+  border: 1px solid #5a4830;
+  border-radius: 12px;
+}
+
+QLabel#ManualStepNum {
+  background-color: #2a3142;
+  color: #8eb4ff;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+QLabel#ManualImage {
+  /* Official diagrams are black line art on white — keep paper behind them */
+  background-color: #f4f2ec;
+  border: 1px solid #343842;
+  border-radius: 12px;
+  padding: 14px;
+}

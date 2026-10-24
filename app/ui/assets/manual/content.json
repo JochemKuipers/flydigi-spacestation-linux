@@ -1,0 +1,290 @@
+{
+  "title": "Vader 4 Pro user manual",
+  "source": "Official Flydigi Vader 4 Pro Gaming Controller User Manual (bundled PDF)",
+  "official_url": "https://shops.flydigi.com/pages/flydigi-vader-4-pro-gaming-controller-user-manual",
+  "qr_url": "http://data.flydigi.com/api/web/link?u=1693206714",
+  "pdf": "../vader4_pro_manual.pdf",
+  "sections": [
+    {
+      "id": "force-sticks",
+      "title": "Force sticks",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Force-adjustable joysticks"
+        },
+        {
+          "type": "para",
+          "text": "Rotate the force adjustment knob around each stick to change damping continuously."
+        },
+        {
+          "type": "bullets",
+          "items": [
+            "Clockwise → more damping: steadier aim and precise control.",
+            "Counterclockwise → less damping: freer movement, less hand fatigue."
+          ]
+        },
+        {
+          "type": "image",
+          "src": "force_stick.png",
+          "alt": "Force adjustment ring around the right stick (MIN / MAX)"
+        },
+        {
+          "type": "heading",
+          "text": "Flydigi Space Station"
+        },
+        {
+          "type": "para",
+          "text": "Download Space Station from www.flydigi.com to customize key mappings, macros, motion sensing, and stick curves. This Linux companion covers the same onboard settings over USB / dongle."
+        },
+        {
+          "type": "cards",
+          "items": [
+            {
+              "title": "Key mapping",
+              "text": "Map pad, keyboard, and mouse buttons."
+            },
+            {
+              "title": "Macros",
+              "text": "Record stick and button sequences."
+            },
+            {
+              "title": "Motion sensing",
+              "text": "Map gyro to stick or mouse for aiming."
+            },
+            {
+              "title": "Joystick curves",
+              "text": "Deadzones and sensitivity curves."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "connect-pc",
+      "title": "Connect · PC",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Wireless dongle"
+        },
+        {
+          "type": "steps",
+          "items": [
+            "Plug the dongle into a USB port on your computer.",
+            "Set the rear mode switch to the dongle (USB) position.",
+            "Press Home on the controller — it pairs automatically. The indicator stays white.",
+            "Later sessions: press Home again and it reconnects."
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Wired USB"
+        },
+        {
+          "type": "para",
+          "text": "Set the rear switch to the dongle (USB) position. Connect with a USB cable. A solid white indicator means the link is up."
+        },
+        {
+          "type": "heading",
+          "text": "Bluetooth"
+        },
+        {
+          "type": "steps",
+          "items": [
+            "Set the rear switch to the Bluetooth position.",
+            "Press Home to wake the controller.",
+            "In your computer’s Bluetooth settings, connect to “Xbox Wireless Controller”.",
+            "A solid white indicator means it connected."
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "XInput vs DInput on PC"
+        },
+        {
+          "type": "para",
+          "text": "XInput is the usual mode for most games (hold Home+X; white indicator). It emulates a standard Xbox controller, which is what the majority of titles expect."
+        },
+        {
+          "type": "para",
+          "text": "Use DInput when you want proper gyro / motion sensing (hold Home+A; blue indicator). XInput does not expose the pad’s real gyro — only Xbox-style controls — so motion features need DInput."
+        },
+        {
+          "type": "note",
+          "text": "On Linux, flydigi-vader4d only owns the native DInput path (USB / dongle). It does not take over or spoof XInput — if the pad is in XInput mode, that stays stock kernel/Xbox behaviour. This companion uses DInput over USB or the 2.4 GHz dongle for lighting and config; Bluetooth is fine for play, but config writes need a cable or the dongle."
+        }
+      ]
+    },
+    {
+      "id": "connect-switch",
+      "title": "Connect · Switch",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Pairing"
+        },
+        {
+          "type": "steps",
+          "items": [
+            "On the Switch home screen open Controllers → Change Grip/Order.",
+            "Set the rear mode switch to NS.",
+            "Press Home once — the controller connects. The indicator stays blue.",
+            "Later sessions: press Home again to reconnect."
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Button mapping in Switch mode"
+        },
+        {
+          "type": "para",
+          "text": "Face buttons follow Nintendo layout (A/B and X/Y swapped vs Xbox). Select / Start become − / +. Home is still Home; the Capture / Screenshot control maps to the Switch screenshot button."
+        }
+      ]
+    },
+    {
+      "id": "connect-mobile",
+      "title": "Connect · Mobile",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Android / iOS (Bluetooth)"
+        },
+        {
+          "type": "steps",
+          "items": [
+            "Set the rear switch to Bluetooth.",
+            "Press Home to wake the controller.",
+            "Enable Bluetooth on the phone/tablet and connect to “Xbox Wireless Controller”.",
+            "Indicator stays white when linked. Later: press Home to reconnect."
+          ]
+        },
+        {
+          "type": "note",
+          "text": "That path is for games with native controller support. For titles without gamepad support on Android, use Flydigi Game Center → Peripheral management → switch to controller mode."
+        }
+      ]
+    },
+    {
+      "id": "power",
+      "title": "Power & battery",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Basic operations"
+        },
+        {
+          "type": "kv",
+          "rows": [
+            ["Power on", "Press Home."],
+            ["Power off", "Change the rear mode switch (or auto-off after ~15 minutes idle)."],
+            ["Low battery", "Second indicator flashes red."],
+            ["Charging", "Second indicator solid red."],
+            ["Fully charged", "Second indicator solid green."]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "specs",
+      "title": "Specifications",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Modes"
+        },
+        {
+          "type": "table",
+          "headers": ["Mode", "Platform", "Indicator", "Link", "System"],
+          "rows": [
+            ["XInput", "PC (main)", "White (hold Home+X)", "Dongle / wired", "Windows 7+"],
+            ["DInput", "PC / Android / iOS", "Blue (hold Home+A)", "Dongle / wired / BT", "Android 10+ / iOS 14+"],
+            ["NS", "Switch", "Blue", "Bluetooth / wired", "Nintendo Switch"]
+          ]
+        },
+        {
+          "type": "note",
+          "text": "XInput is the main PC mode for game compatibility (Xbox emulation). Prefer DInput when you need real gyro — XInput does not expose it properly. On Linux, our driver only handles DInput; XInput is left alone on stock behaviour."
+        },
+        {
+          "type": "heading",
+          "text": "Hardware"
+        },
+        {
+          "type": "kv",
+          "rows": [
+            ["Wireless", "Bluetooth 5.0"],
+            ["Range", "Under 10 m"],
+            ["Battery", "800 mAh Li-ion ≈ 2 h charge @ 5 V / 800 mA"],
+            ["Current", "< 45 mA in use, < 10 µA standby"],
+            ["Temperature", "−10 °C to 50 °C (use & storage)"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "appearance",
+      "title": "Appearance",
+      "blocks": [
+        {
+          "type": "heading",
+          "text": "Front"
+        },
+        {
+          "type": "image",
+          "src": "appearance_front.png",
+          "alt": "Front of the controller with callouts"
+        },
+        {
+          "type": "bullets",
+          "items": [
+            "Rotational D-pad",
+            "Force-adjustable joysticks (MIN / MAX rings)",
+            "FN and Home buttons",
+            "ABXY plus C / Z face buttons"
+          ]
+        },
+        {
+          "type": "heading",
+          "text": "Back"
+        },
+        {
+          "type": "image",
+          "src": "appearance_back.png",
+          "alt": "Back of the controller with callouts"
+        },
+        {
+          "type": "bullets",
+          "items": [
+            "USB-C interface",
+            "Force-switchable vibration triggers",
+            "Extended back buttons (M1–M4)",
+            "Controller mode switch (Dongle / Bluetooth / NS)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faq",
+      "title": "Q&A",
+      "blocks": [
+        {
+          "type": "qa",
+          "q": "The controller cannot connect.",
+          "a": "Confirm the rear mode switch matches the link you want. Hold Home for about three seconds until the indicator flashes quickly to enter pairing mode. Dongle: unplug and reseat the receiver. Bluetooth: forget the device, toggle Bluetooth, then reconnect."
+        },
+        {
+          "type": "qa",
+          "q": "How do I update firmware?",
+          "a": "Use Flydigi Space Station on PC or Flydigi Game Center on phone, and follow the in-app update steps. On Linux, the Firmware tab in this companion can flash the archived F4 image over wired USB."
+        },
+        {
+          "type": "qa",
+          "q": "Joystick, trigger, or motion sensing feels wrong.",
+          "a": "In Space Station open the testing page and run calibration. Recheck deadzones and curves after calibrating."
+        }
+      ]
+    }
+  ]
+}

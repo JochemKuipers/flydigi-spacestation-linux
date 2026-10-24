@@ -34,7 +34,8 @@ from flydigi.ota import DEFAULT_BIN, usb_ota_ready
 
 from .bridge import DaemonBridge
 from .labels import KEY_LABELS, hotspot_label, key_label
-from .widgets import LivePadView, ManualView, StatChip, logo_pixmap
+from .manual import ManualView
+from .widgets import LivePadView, StatChip, logo_pixmap
 from .workers import CatalogFetcher, OtaWorker, start_ota_thread
 
 LED_MODES = [
@@ -471,7 +472,7 @@ class MainWindow(QMainWindow):
     def _build_manual(self) -> QWidget:
         w, lay = _page(
             "Manual",
-            "Official Flydigi Vader 4 Pro user manual (pairing, modes, force sticks, and more).",
+            "Force sticks, pairing, specs, and Q&A — structured from Flydigi’s official PDF.",
         )
         lay.addWidget(ManualView(), stretch=1)
         return w

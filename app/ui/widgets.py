@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QLabel, QWidget
+from PySide6.QtWidgets import QWidget
 
 from flydigi.dinput_proto import build_led
 from flydigi.ss4_f4 import assets_dir, load_device_config, report_name
@@ -565,46 +565,3 @@ class StatChip(QWidget):
         )
 
 
-class ManualView(QWidget):
-    """Official Vader 4 Pro manual (bundled PDF)."""
-
-    MANUAL_URL = "https://shops.flydigi.com/pages/flydigi-vader-4-pro-gaming-controller-user-manual"
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        from PySide6.QtCore import QUrl
-        from PySide6.QtGui import QDesktopServices
-        from PySide6.QtPdf import QPdfDocument
-        from PySide6.QtPdfWidgets import QPdfView
-        from PySide6.QtWidgets import QHBoxLayout, QPushButton, QVBoxLayout
-
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
-        tip = QLabel(
-            "Official Flydigi Vader 4 Pro manual. "
-            f'<a href="{self.MANUAL_URL}">Open on flydigi.com</a>'
-        )
-        tip.setObjectName("Muted")
-        tip.setOpenExternalLinks(True)
-        tip.setWordWrap(True)
-        lay.addWidget(tip)
-
-        self._doc = QPdfDocument(self)
-        pdf = _ASSETS / "vader4_pro_manual.pdf"
-        if pdf.is_file():
-            self._doc.load(str(pdf))
-        self._view = QPdfView(self)
-        self._view.setDocument(self._doc)
-        self._view.setPageMode(QPdfView.PageMode.MultiPage)
-        self._view.setZoomMode(QPdfView.ZoomMode.FitToWidth)
-        lay.addWidget(self._view, stretch=1)
-
-        row = QHBoxLayout()
-        open_btn = QPushButton("Open PDF externally")
-        open_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(pdf))))
-        web_btn = QPushButton("Manual on website")
-        web_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(self.MANUAL_URL)))
-        row.addWidget(open_btn)
-        row.addWidget(web_btn)
-        row.addStretch()
-        lay.addLayout(row)
