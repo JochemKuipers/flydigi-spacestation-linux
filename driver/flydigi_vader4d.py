@@ -541,16 +541,20 @@ class Daemon:
         try:
             while not self.stop:
                 assert self._listen is not None
-                src_fd = None
+                src_fds: list[int] = []
                 if self.mode == "bt" and self.bt is not None:
-                    src_fd = self.bt.fileno()
+                    src_fds.append(self.bt.fileno())
+                    try:
+                        src_fds.append(self.bt.dev.fd)
+                    except OSError:
+                        pass
                 elif self.dev is not None:
-                    src_fd = self.dev.fileno()
-                if src_fd is None:
+                    src_fds.append(self.dev.fileno())
+                if not src_fds:
                     time.sleep(0.2)
                     self._reconnect()
                     continue
-                fds = [src_fd, self._listen.fileno(), *[c.fileno() for c in self._clients]]
+                fds = [*src_fds, self._listen.fileno(), *[c.fileno() for c in self._clients]]
                 try:
                     r, _, _ = select.select(fds, [], [], 1.0)
                 except (ValueError, OSError):
@@ -562,7 +566,7 @@ class Daemon:
                 if any(c.fileno() in r for c in self._clients):
                     self._service_clients()
 
-                if src_fd in r:
+                if any(fd in r for fd in src_fds):
                     if self.mode == "bt" and self.bt is not None:
                         try:
                             rep = self.bt.pump()
@@ -618,7 +622,12 @@ class Daemon:
             except OSError:
                 pass
             self.dev = None
-        self.bt = None
+        if self.bt:
+            try:
+                self.bt.close()
+            except OSError:
+                pass
+            self.bt = None
         if self.ui:
             try:
                 self.ui.close()

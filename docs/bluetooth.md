@@ -33,6 +33,20 @@ If BlueZ shows Connected but **no input events**:
 - Do **not** poke Nordic UART randomly — speculative GATT writes have dropped the link in testing.
 - Prefer **dongle/wired** for full IF2 features (M-buttons, IMU, LED/config/rumble). BT DInput is a lighter HID gamepad.
 
+## BT button map (daemon)
+
+Kernel `Flydigi VADER4P` exposes extras as consumer keys / HID bits — not Xbox paddles.
+
+| Control | Source (approx.) |
+|---------|------------------|
+| A/B/X/Y, LB/RB, Start/Select, sticks, hat, LT/RT | Standard gamepad |
+| M1–M4 | `KEY_EJECTCD` / `CHANNELUP` / `CHANNELDOWN` / `TV` |
+| C / Z | `KEY_CAMERA` / `KEY_RED` (provisional) |
+| Guide / FN | `KEY_ENTER`/`WWW` / `BTN_0`/`PROGRAM` (provisional) |
+
+`BTN_TL2`/`TR2` are digital trigger clicks — **not** C/Z (that misfire is fixed).
+Daemon must open `VADER4P`, never its own uinput clone (`d7d7:0041`).
+
 ## XInput — white LED (captured)
 
 | Field | Value |

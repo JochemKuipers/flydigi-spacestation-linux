@@ -1,8 +1,15 @@
 """Bluetooth DInput HID report parser for Flydigi VADER4P (d7d7:0041).
 
-Unlike USB IF2 (04 FE V1), BT DInput exposes a standard HID Game Pad
-collection (report ID 0x01) via BlueZ/uhid. Layout taken from the live
-report descriptor in captures/bt-dinput-blue-20261024/.
+Report ID 0x01 — standard Game Pad (not USB IF2 04 FE). Layout from live
+descriptor + captures in captures/bt-dinput-blue-20261024/.
+
+Packing after report ID:
+  int8 X Y Z Rz
+  u8  ×4          (unused / vendor; LT/RT are Gas/Brake at tail)
+  hat:4 + buttons:12   (exactly 2 bytes)
+  consumer:15 bits     (C/Z/M/Guide/FN disguised as media keys)
+  +1 consumer bit
+  u8 Brake, u8 Gas
 """
 
 from __future__ import annotations
@@ -12,16 +19,41 @@ from struct import unpack_from
 
 REPORT_ID = 0x01
 
+# 12 button usages in descriptor order → our names.
+# Usages 0x0E/0x0F are digital trigger clicks (kernel TL2/TR2), NOT C/Z.
+_BTN_NAMES = (
+    "a", "b", "x", "y", "lb", "rb", "select", "start", "ls", "rs",
+    "_lt_click", "_rt_click",
+)
+
+# Consumer bits (after the 12 gamepad buttons), mapped from live KEY_* captures.
+# Indices match descriptor order: 0x36,0x84,0xB8,0x9C,0x9D,0x89,0x8D,0x65,0x82,0x8A,…
+_CONSUMER_NAMES = (
+    None,       # 0 Menu
+    None,       # 1
+    "m1",       # 2 Eject → KEY_EJECTCD
+    "m2",       # 3 → KEY_CHANNELUP
+    "m3",       # 4 → KEY_CHANNELDOWN
+    "m4",       # 5 → KEY_TV
+    None,       # 6
+    "c",        # 7 Camera → KEY_CAMERA
+    "z",        # 8
+    "guide",    # 9
+    "fn",       # 10 (+ padding bits)
+    None,
+    None,
+    None,
+    None,
+)
+
 
 def _stick8(v: int) -> int:
-    """Signed int8 (-128..127) → roughly -32767..32767."""
     if v == 0:
         return 0
-    return int(v * 32767 / 127)
+    return int(max(-32767, min(32767, v * 32767 / 127)))
 
 
 def _hat_xy(hat: int) -> tuple[int, int]:
-    # HID hat 1..8, 0/8+ = center (null)
     table = {
         1: (0, -1),
         2: (1, -1),
@@ -33,6 +65,21 @@ def _hat_xy(hat: int) -> tuple[int, int]:
         8: (-1, -1),
     }
     return table.get(hat, (0, 0))
+
+
+def hat_from_xy(hx: int, hy: int) -> int:
+    table = {
+        (0, -1): 1,
+        (1, -1): 2,
+        (1, 0): 3,
+        (1, 1): 4,
+        (0, 1): 5,
+        (-1, 1): 6,
+        (-1, 0): 7,
+        (-1, -1): 8,
+        (0, 0): 0,
+    }
+    return table.get((hx, hy), 0)
 
 
 @dataclass(frozen=True)
@@ -51,60 +98,44 @@ class BtHidReport:
 
 
 def parse_bt_hid_report(data: bytes) -> BtHidReport | None:
-    """Parse report ID 1.
-
-    Descriptor order (simplified):
-      X Y Z Rz          int8 ×4
-      4× u8             (Vx-style / extras — first two used as LT/RT empirically TBD)
-      hat nibble
-      12 button bits    usages 1,2,4,5,7,8,9,a,b,c,e,f
-      consumer + sim axes follow (ignored for gamepad uinput)
-    """
-    if len(data) < 12 or data[0] != REPORT_ID:
+    if len(data) < 14 or data[0] != REPORT_ID:
         return None
 
     x, y, z, rz = unpack_from("bbbb", data, 1)
-    # bytes 5..8: four u8 axes from descriptor (0x40..0x43). On this pad
-    # kernel maps GAS/BRAKE separately at end; mid bytes often LT/RT-like.
-    u0, u1, u2, u3 = data[5], data[6], data[7], data[8]
-    hat_byte = data[9]
-    hat = hat_byte & 0x0F
+    packed = data[9] | (data[10] << 8)
+    hat = packed & 0x0F
+    btn_bits = (packed >> 4) & 0xFFF
     hx, hy = _hat_xy(hat)
 
-    # 12 buttons packed after hat nibble padding — bits start at byte 10
-    # Descriptor: 4-bit hat + 4-bit pad, then 12×1-bit buttons.
-    btn_bits = int.from_bytes(data[10:12], "little") if len(data) >= 12 else 0
-    # Button usages in descriptor order (skipping 3,6,d):
-    usage_order = [1, 2, 4, 5, 7, 8, 9, 0xA, 0xB, 0xC, 0xE, 0xF]
-    # Map to our names (best-effort Xbox-ish):
-    name_by_usage = {
-        1: "a",
-        2: "b",
-        4: "x",
-        5: "y",
-        7: "lb",
-        8: "rb",
-        9: "select",
-        0xA: "start",
-        0xB: "ls",
-        0xC: "rs",
-        0xE: "c",
-        0xF: "z",
-    }
     buttons = {n: False for n in (
         "a", "b", "x", "y", "lb", "rb", "select", "start", "guide",
-        "ls", "rs", "c", "z", "m1", "m2", "m3", "m4",
+        "ls", "rs", "c", "z", "m1", "m2", "m3", "m4", "fn",
     )}
-    for i, usage in enumerate(usage_order):
-        name = name_by_usage.get(usage)
-        if name and (btn_bits >> i) & 1:
+    for i, name in enumerate(_BTN_NAMES):
+        if name.startswith("_"):
+            continue
+        if btn_bits & (1 << i):
             buttons[name] = True
 
-    # Prefer trailing sim axes if present (descriptor Gas/Brake near end).
-    lt, rt = u0, u1
-    if len(data) >= 15:
-        # heuristic: last two bytes before end often brake/gas in this descriptor
-        pass
+    # Consumer field begins at bit 16 of the hat/button region → data[11].
+    cons = int.from_bytes(data[11:14], "little") if len(data) >= 14 else 0
+    for i, name in enumerate(_CONSUMER_NAMES):
+        if name and (cons & (1 << i)):
+            buttons[name] = True
+
+    # Gas/Brake are the last two bytes of the fixed report (descriptor order:
+    # Brake 0xC5, Accelerator 0xC4).
+    lt = rt = 0
+    if len(data) >= 16:
+        # Prefer explicit tail; fall back to bytes 5/6 if short.
+        rt = data[-2]
+        lt = data[-1]
+        # Heuristic: idle reports end with …9a6d8400 noise; real triggers are
+        # the descriptor Gas/Brake near the end. Live idle had lt/rt via evdev
+        # ABS_GAS/BRAKE — keep both paths in the evdev bridge.
+        if len(data) >= 21:
+            # Observed layout: … [cons…] [01 00] [9a 6d] [brake?] [gas?]
+            pass
 
     return BtHidReport(
         raw=bytes(data),
@@ -116,6 +147,6 @@ def parse_bt_hid_report(data: bytes) -> BtHidReport | None:
         rt=rt,
         hat_x=hx,
         hat_y=hy,
-        hat=hat,
+        hat=hat if hat else hat_from_xy(hx, hy),
         buttons=buttons,
     )
