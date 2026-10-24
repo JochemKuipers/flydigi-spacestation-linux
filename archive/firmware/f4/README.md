@@ -9,21 +9,83 @@
 | Kind | **Full** single-bin image (not an incremental patch) |
 | SHA256 | see `6.9.3.3/SHA256SUMS` and `manifest.json` |
 
-Evidence it is full: one `.bin` in the zip; embeds product strings
-(`Flydigi VADER4` / `VADER4P`); catalog uses absolute version URLs; SS3
-`ota_write` streams the entire `source_binchar` buffer in 16-byte cells.
+Evidence it is full: one `.bin` in the zip; embeds `Flydigi VADER4` / `VADER4P`;
+catalog uses absolute version URLs; SS3 `ota_write` streams the entire
+`source_binchar` buffer in 16-byte cells with per-cell CRC16.
 
-## Flasher notes (SS3 `FmUpgradeSwViewModel`)
+Bin header (SS3 loader): `u32 size @ offset 24`; CRC trailer at `size-4`;
+`u32 version @ offset 2`. Payload padded with 16×`0xFF` after `size`.
 
-Decompiled snippets under `ss3-flasher-decompile/` (from
-`FlydigiSpaceStation.dll` 3.4.9.5).
+## Flasher RE (SS3 3.4.9.5)
 
-- Opens HID `04b4:2412` on usage page **`FFEF`** (default), or `FFB1` /
-  `FFEE` for other products.
-- Report ID **`5`** OUT; OTA framing:
-  - start: `[2, 2, 0, 1, 0xFF, …]`
-  - data: up to 3× `{index_lo, index_hi, 16 payload, crc16_lo, crc16_hi}`
-  - end: `[2, 6, 0, 2, 0xFF, last_index_le, (0x10000-last)_le, …]`
-- Image size/CRC taken from header/`size-4` trailer after load.
+Decompiled types under `ss3-flasher-decompile/` from
+`FlydigiSpaceStation.dll`, `LibCommon.dll`, and
+`Service/GameController.ServiceHandler.dll`.
 
-Enter-ISP / mode-switch command path still TBD before any Linux flash UI.
+### Device open
+
+- HID `VID 04B4` / `PID 2412`, usage page **`FFEF`** (gamepad; dongle uses
+  `FFEE` / HSH `FFB1`).
+- Report ID **`5`**; write via `FileStream.Write` of `OutputReportByteLength`.
+
+### Enter path (before OTA)
+
+For non-HSH pads (Vader):
+
+1. If currently XInput → `GamePadModeService.SwitchMode("DInput")` → service
+   sends XInput subcmd **`23`** (`CommandDic.SwitchDinput`).
+2. Poll until `FindDeviceNew(04B4,2412,FFEF,…)` succeeds.
+3. If already DInput, SS3 does **not** send SoftUpgrade — it just opens FFEF.
+
+Related SoftUpgrade / OTA-entry bytes (used for HSH / dongle / Android paths,
+not the default Vader path):
+
+| Path | Bytes (report 5…) |
+|------|-------------------|
+| DInput → OTA | `05 F5 07` (`getSwitchAndroid2OTA`) |
+| SoftUpgrade (MCU-dependent) | `05 F5/F6 xx` (`GetSoftUpgradeCmd`) |
+| XInput → OTA | XInput `getSendData(48, 15)` (`K1CmdID` + `XinputToOTACmd`) |
+
+### `ota_write` framing (ACK-driven)
+
+Every OUT starts with report ID `5`. Body (after ID):
+
+**Start** (`start_ota_flag` 1→2):
+
+```text
+[2, 2, 0, 1, 0xFF, …]
+```
+
+**Data** (flag==2): up to 3 cells of 20 bytes each; length byte =
+`20 * cells`. Cell layout:
+
+```text
+index_lo, index_hi, payload[16], crc16_lo, crc16_hi
+```
+
+- `index` is a 16-byte cell index into the image.
+- CRC16 over `{index_lo, index_hi, payload[16]}` (poly table `{0, 0xA001}`,
+  init `0xFFFF` — see `FirmwareUpgradeUtils.crc16`).
+- Next chunk is sent only after an IN report on ID 5 (any response while
+  `start_ota_flag != 0` triggers another `ota_write`).
+
+**Finish** (when no more data / length byte would be 0):
+
+```text
+[2, 6, 0, 2, 0xFF, last_index_lo, last_index_hi,
+ (0x10000 - last_index)_lo, (0x10000 - last_index)_hi, …]
+```
+
+**Success IN** (device):
+
+```text
+[5, 2, 3, 0, 6, 0xFF, status]
+```
+
+`status==0` → OK.
+
+### Still gated for Linux flash UI
+
+- Live verify enter + abort on **this** pad (wired only).
+- Confirm IF2 / usage `FFEF` is the same handle the daemon already uses.
+- No flash from the companion until that dry-run is done.

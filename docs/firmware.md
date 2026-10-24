@@ -92,13 +92,24 @@ bytes `… KNLT …` (Telink-family container — same magic as F5 RF/dongle bin
 
 **Update kind: full image** (not incremental). Archived in-repo at
 [`archive/firmware/f4/6.9.3.3/`](../archive/firmware/f4/6.9.3.3/) with
-`manifest.json` + SHA256. SS3 flasher (`FmUpgradeSwViewModel.ota_write`)
-streams the whole bin over HID `04b4:2412` usage `FFEF`, report ID `5`, in
-16-byte CRC’d cells — see `archive/firmware/f4/README.md` and decompile
-notes under `ss3-flasher-decompile/`.
+`manifest.json` + SHA256.
 
-Linux flash UI still gated until enter-upgrade / abort paths are verified on
-hardware; having the full image + OTA framing is necessary but not sufficient.
+### SS3 flasher wire (RE’d, 2026-10-24)
+
+Source: decompiled `FmUpgradeSwViewModel.ota_write` + `DongleCommand` /
+`CommandDic` / `GamePadModeService` under
+`archive/firmware/f4/ss3-flasher-decompile/` — summary in
+[`archive/firmware/f4/README.md`](../archive/firmware/f4/README.md).
+
+| Step | Behaviour |
+|------|-----------|
+| Image | Full Telink `KNLT` bin; size `@+24`, CRC `@size-4` |
+| Enter (Vader) | Ensure **DInput**; open HID `04b4:2412` usage **`FFEF`**, report **`5`**. SoftUpgrade `05 F5 07` is HSH/dongle path, not the default Vader flow. |
+| Transfer | Chunked OUT: start `[2,2,0,1,FF…]`, then ≤3×`{index_le16, 16 B, crc16}`, finish with last-index + ones’-complement; ACK-driven on IN report 5 |
+| CRC16 | init `FFFF`, bit-wise with table `{0, 0xA001}` over `{index, payload}` |
+
+Linux flash UI still gated until enter + abort are live-verified on this pad
+(wired only).
 
 ## Native helpers (**O** PE exports)
 
@@ -142,10 +153,12 @@ Sample headers from F5 `5.0` (for format triage only — **not** Vader 4 images)
 
 ## Gate checklist (must all clear before enabling UI)
 
-1. Recover DInput `SwitchToFirmwareUpgradeMode` / `SwitchUsb` IF2 framing on **this** pad (device_id 85).
-2. Obtain authentic **f4** image set (or prove which F5 assets apply — they likely do not).
-3. Map each chip_module → updater class → USB VID/PID in ISP mode.
-4. Document abort / power-loss behaviour; prefer wired; never BT.
-5. Dry-run FirmwareConsole against a disposable unit or with ISP enumerate-only.
+1. ~~Obtain authentic f4 image~~ — archived `6.9.3.3` full KNLT.
+2. ~~Recover SS3 HID OTA framing~~ — documented above; still need live ACK
+   timing / abort behaviour on this pad.
+3. Confirm enter path: already-DInput + usage `FFEF` vs optional SoftUpgrade
+   `05 F5 07`; never BT; prefer wired.
+4. Map whether IF2 (daemon) is the same handle as SS3’s FFEF open.
+5. Dry-run read-only enumerate + start-frame only before any full write.
 
 Until then the companion Firmware tab stays disabled.
