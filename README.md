@@ -2,6 +2,8 @@
 
 Native Linux support for the Flydigi Vader 4 Pro **without** Xbox/XInput spoofing, `xpad`, or Steam Input.
 
+**Private repo:** [jochem-kuipers/flydigi-spacestation-linux](https://origin.cursor.com/jochem-kuipers/flydigi-spacestation-linux) on Cursor Origin.
+
 ## Status
 
 | Component | Status |
@@ -9,7 +11,8 @@ Native Linux support for the Flydigi Vader 4 Pro **without** Xbox/XInput spoofin
 | Diagnosis (dongle DInput) | Documented — see [docs/diagnosis.md](docs/diagnosis.md) |
 | Protocol notes | Partial — see [docs/protocol.md](docs/protocol.md) |
 | `flydigi-vader4d` (hidraw IF2 → uinput) | Implemented (test/install below) |
-| Space Station Linux GUI + firmware updater | In progress |
+| Space Station Linux GUI | Early shell — device + live V1 monitor |
+| Firmware updater | Locked until DFU RE completes |
 | Bluetooth | Not verified yet |
 
 ## Requirements
@@ -33,6 +36,15 @@ python3 driver/flydigi_vader4d.py
 ```
 
 Verify with `evtest` — you should see face buttons, C/Z, M1–M4, sticks, triggers, dpad. VID/PID remain `04b4:2412`.
+
+## Companion UI (early)
+
+```bash
+# deps: pacman -S pyside6 python-evdev
+python3 app/spacestation_linux.py
+# or CLI monitor:
+python3 app/monitor_v1.py
+```
 
 ## Space Station extract
 
