@@ -1,0 +1,7 @@
+=== uevent ===
+DRIVER=microsoft
+HID_ID=0005:0000045E:000002E0
+HID_NAME=Xbox Wireless Controller
+HID_PHYS=70:1a:b8:2b:26:71
+HID_UNIQ=a0:5a:5e:57:dd:54
+MODALIAS=hid:b0005g0001v0000045Ep000002E0

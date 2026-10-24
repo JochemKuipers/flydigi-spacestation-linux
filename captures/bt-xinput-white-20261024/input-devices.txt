@@ -1,0 +1,13 @@
+=== input device ===
+N: Name="Xbox Wireless Controller"
+P: Phys=70:1a:b8:2b:26:71
+S: Sysfs=/devices/virtual/misc/uhid/0005:045E:02E0.0039/input/input86
+U: Uniq=a0:5a:5e:57:dd:54
+H: Handlers=kbd event23 js0 
+B: PROP=0
+B: EV=20001b
+B: KEY=3ff000000000000 0 800 0 0
+B: ABS=3003f
+B: MSC=10
+B: FF=107030000 0
+

@@ -1,36 +1,37 @@
-# Bluetooth DInput path
+# Bluetooth path
 
-## Status
+## Live capture — white LED (2026-10-24)
 
-**Not verified** on this Vader 4 Pro yet — no Flydigi BT pairing present on the
-dev machine (only an unrelated Xbox Wireless Controller showed up in BlueZ).
+| Field | Value |
+|-------|-------|
+| Status LED | **White** |
+| Mode | **XInput** (firmware) |
+| BlueZ name | `Xbox Wireless Controller` |
+| HID ID | `0005:045E:02E0` (Bluetooth bus) |
+| Modalias | `usb:v045Ep02E0d0903` |
+| Kernel driver | `microsoft` (`hid-microsoft`) |
+| Input node | `/dev/input/event*` — standard Xbox pad axes/buttons + FF rumble |
+| Flydigi VID/PID | **absent** — no `04b4:2412`, no `Flydigi*VADER*` hidraw |
+| Raw captures | `captures/bt-xinput-white-20261024/` |
 
-Community notes and flydigictl both treat Bluetooth as a separate, often
-incomplete path versus the `04b4:2412` dongle/wired composite.
+This is the firmware’s intentional Xbox identity on BT XInput. It is **out of scope** for `flydigi-vader4d` (no Xbox spoofing / no relying on `xpad`/`hid-microsoft` as the DInput solution).
 
-## When you pair
+## What we need next — blue LED (DInput)
 
-1. Put the pad in PC/DInput mode, then hold the vendor BT pair combo (see
-   Flydigi manual — typically a FN + face-button hold until LEDs blink).
-2. `bluetoothctl scan on` / pair / trust / connect.
-3. Check hidraw:
+On the pad (rear switch on Bluetooth):
+
+1. Hold **FN ◯ + A** until the status LED turns **blue** (DInput).
+2. Re-pair / reconnect if BlueZ drops the link after the mode change.
+3. Tell the agent / re-run:
 
    ```bash
    python3 driver/flydigi_vader4d.py --list
+   bluetoothctl devices Connected
+   grep -A8 -iE 'Flydigi|Vader|045e|04b4' /proc/bus/input/devices
    ```
 
-   Name-based matching should list any `Flydigi*VADER*` hidraw even if the
-   Bluetooth VID:PID differs from `04b4:2412`.
-4. Capture `HID_ID`, `HID_NAME`, `HID_PHYS`, and a few IF packets into
-   `captures/bt-*.txt`, then we lock `EXTRA_IDS` in `flydigi/enumerate.py` and
-   confirm the V1 `04 FE` stream + report `05` commands behave like USB IF2.
+Expected (unverified): a non-Xbox HID name and possibly a different VID:PID or a classic HID gamepad collection we can bind like USB IF2.
 
-## Expected software path
+## USB / dongle reminder
 
-Same as USB once a suitable hidraw appears:
-
-`hidraw → flydigi-vader4d → uinput + control socket`
-
-If BT exposes only a partial HID collection (no IF2-equivalent), the daemon
-will need a BT-specific report parser — that is why we need a live capture
-before claiming parity.
+Dongle + wired DInput stays `04b4:2412` IF2 — already supported. BT XInput (white) will keep showing up as Xbox until you switch modes on the pad.
