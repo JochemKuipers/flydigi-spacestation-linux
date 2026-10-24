@@ -26,7 +26,12 @@ M1–M4 / full IMU are likely USB-IF2-only; BT HID exposes face buttons, sticks,
 3. `python3 driver/flydigi_vader4d.py --list` should show `bus=bluetooth` / `d7d7:0041`.
 4. Install udev: `./scripts/install-driver.sh` (includes `d7d7:0041` hidraw access).
 
-If BlueZ shows Connected but no input events, press HOME / re-pair; HID can come up without sending reports until the pad wakes.
+If BlueZ shows Connected but **no input events**:
+
+- Press **HOME** to wake; wiggle sticks / face buttons.
+- Tap **FN ◯** once — BT DInput advertises Appearance `0x03c2` (mouse); FN may toggle gyro-mouse vs gamepad stream (same idea as USB).
+- Do **not** poke Nordic UART randomly — speculative GATT writes have dropped the link in testing.
+- Prefer **dongle/wired** for full IF2 features (M-buttons, IMU, LED/config/rumble). BT DInput is a lighter HID gamepad.
 
 ## XInput — white LED (captured)
 
