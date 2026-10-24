@@ -1,64 +1,87 @@
 # Flydigi Vader 4 Pro protocol notes (Space Station 4.2.2.3)
 
-Legend: **O** = observed on hardware · **S** = from shipped Space Station 4.2.2.3 · **C** = cross-check (SDL / community) · **I** = inference
+Legend: **O** = observed on hardware · **S** = from shipped Space Station 4.2.2.3 · **C** = cross-check (SDL / flydigictl) · **I** = inference
 
 ## Identities
 
 | Role | VID:PID | Notes |
 |------|---------|-------|
-| Wired / 2.4G DInput composite | `04b4:2412` | **O** on dongle |
+| Wired / 2.4G DInput composite | `04b4:2412` | **O** on dongle + wired |
 | Device code in Space Station configs | `f4` | **S** `Configs/Controller/f4/` |
-| Mapping default files | `default_mapping_{85,91,105}.dat` | **S**; `105` matches flydigictl “device ID 105” (**C**) |
+| Onboard device ID (cmd 236) | `85` | **O** on this pad; maps to `default_mapping_85.dat` (**S**) |
 
 ## Input report — IF2, V1 (`04 FE…`)
 
-**O** + **C** (SDL `SDL_hidapi_flydigi.c` V1 handler). Packet length 32 including report ID.
+**O** + **C** (SDL `SDL_hidapi_flydigi.c` V1). Packet length 32 including report ID.
 
 | Offset | Field | Notes |
 |--------|-------|-------|
 | 0 | Report ID | `0x04` |
 | 1 | Magic | `0xFE` |
-| 7 | M1–M4, C, Z bits | M1=`0x04`, M2=`0x08`, M3=`0x10`, M4=`0x20`; C=`0x01`, Z=`0x02` (**C**) |
-| 8 | Guide / misc | Guide=`0x08` (**C**) |
-| 9 | Hat nibble + A/B/Select/X | hat=`&0x0F`; A=`0x10`, B=`0x20`, Back=`0x40`, X=`0x80` (**C**) |
-| 10 | Y/Start/LB/RB/LS/RS | Y=`0x01`, Start=`0x02`, LB=`0x04`, RB=`0x08`, LS=`0x40`, RS=`0x80` (**C**) |
+| 7 | M1–M4, C, Z | M1=`0x04` … C=`0x01`, Z=`0x02` (**C**) |
+| 8 | Guide | Guide=`0x08` (**C**) |
+| 9 | Hat + A/B/Select/X | hat=`&0x0F`; A=`0x10`, B=`0x20`, Back=`0x40`, X=`0x80` |
+| 10 | Y/Start/LB/RB/LS/RS | Y=`0x01`, Start=`0x02`, LB=`0x04`, RB=`0x08`, LS=`0x40`, RS=`0x80` |
 | 11–16 | Accel | int16 pairs (**C**) |
-| 17,19 | Left stick X,Y | u8, center `0x7F` (**O**/**C**) |
-| 21,22 | Right stick X,Y | u8, center `0x7F` (**O**/**C**) |
-| 23,24 | LT, RT | u8 0–255 (**C**; idle **O** = 0) |
-| 18,20,26–30 | Gyro components | int16 packing per SDL V1 (**C**) |
+| 17,19 | Left stick X,Y | u8, center `0x7F` (**O**) |
+| 21,22 | Right stick X,Y | u8, center `0x7F` (**O**) |
+| 23,24 | LT, RT | u8 0–255 (**O**) |
+| 18,20,26–30 | Gyro | int16 packing per SDL V1 (**C**) |
 
-Output on same interface: report ID `0x05`, 31 payload bytes (**O** descriptor). Rumble V1 command shape in SDL: `{0x05, 0x0F, lo, hi}` (**C**, unverified on this pad).
+## Command channel — same IF2, report `0x05`
 
-## Config / feature channel — IF3
+**O** + **C** (flydigictl `protocol/dinput`). Host writes 12-byte OUT reports: `[5, cmd, args…]`.
 
-Descriptor: usage page `0xFFEE`, report `0x05`, 63-byte in/out/feature (**O**).
+Responses are non-`04 FE` packets; many put the echoed command ID in byte `[15]`.
 
-Space Station ships `hidapi.dll` and **.NET NativeAOT** PEs (`SpaceStationService.exe`, `FirmwareConsole.exe` — no CLI directory; Ghidra reports NativeAOT metadata). REA Evidence: open_binary Ghidra on `SpaceStationService.exe` SHA-256 `9116d63a…`, overview `ev_1988c46a…` (15207 procedures).
+| Cmd | Name | Notes |
+|-----|------|-------|
+| `0x0F` (15) | Haptic / rumble | `[5, 0x0F, lo, hi]` — **O** motors respond |
+| 17 | Dongle version | response `[4, 17, FW_L, FW_H]` (**C**) |
+| 229 | Read LED config | parcels; byte `[15]==229`, chunk idx in `[3]`, 10 data bytes `[5:15]`; **49** chunks (**C**/**O**) |
+| 231 | Write LED start | followed by inner parcels cmd **51** (**C**) |
+| 234 | Write gamepad config start | inner parcels cmd **34** (**C**) |
+| 235 | Read gamepad config | **52** chunks × 10 → 520 bytes (**O**) |
+| 236 | Get device info | **O**: device_id=`[3]`, mac=`[5:9]`, FW_L/H=`[9]/[10]`, battery=`[11]`, cpu=`[12]`, conn=`[13]`, motion=`[14]`, cmd=`[15]` |
 
-**S** type/method name inventory (from `strings`, not yet byte-verified) includes separate DInput vs XInput factories, among them:
+### Device info example (**O**)
 
-- `DInputProtocol`
-- `AcquireControllerCommandFactory` / `AcquireController`
-- `EnableRawDataTransportInCommandDInput` / `EnableRawDataInput` / `enableRawData`
-- `EnableThirdPartyAppControl` / `CheckThirdPartyAcquiredController`
-- `ApplyMappingConfigByCfgIdCommandDInput`
-- `EnableJoystickReboundCommandDInput`, `EnableJoystickDebounceCommandDInput`, `EnableJoystickAutoCalibrationCommandDInput`
-- `EnableMotionDebounceCommandDInput`
-- `CalibrationAdcCommandDInput`
-- `DongleInfoControllerCommandDInput`
-- `DeviceMaskCommandDInput`
+`device_id=85`, firmware `6.9.3.3` (from FW_L/H nibble packing), battery step 4 → 100%, connection 0 (dongle).
 
-Full filtered dump: `captures/service-protocol-strings.txt`.
+### LED config blob
 
-Exact wire bytes for Vader 4 command IDs/CRC are **not yet verified** on this pad. Newer `0x37D7` pads (openflydigi) use a framed command set that must not be assumed identical for `04b4:2412` without a live capture or decompilation of the DInput factories.
+Header 20 bytes + up to 16×10 RGB units. Modes: 0 off, 1 streamlined, 2 breathing, 3 gradient, 4 feedback, 5 steady (**C**). Write via parcelized cmd 231/51.
 
-## Firmware update (**S**, unverified on Linux)
+### Gamepad config blob (V2 offsets, **C**/live **O**)
 
-Tree: `firmware/` including `FirmwareConsole.exe`, `jl_firmware_upgrade_x64.dll`, WCH/CH375 ISP DLLs, `firmware/bin/controller/`.  
-**Safety:** flash path must be reverse-engineered and prefer wired before enabling in the Linux UI.
+| Range | Field |
+|-------|-------|
+| 0–1 | Version |
+| 2 | Package length (+1 on wire) |
+| 3–12 | Legacy LED (10 B) |
+| 13–108 | Key map (32×3: map_id, turbo_type, turbo); `255` = native |
+| 109–122 | Stick curves (2×7) |
+| 123–136 | Trigger curves (2×7) |
+| 137–144 | Motion |
+| 145–153 | Motors |
+| 154+ | Trigger motors / lunpan / macros / padding → 520 B total |
+
+## IF3 (`0xFFEE`)
+
+Descriptor present (**O**). Live DInput companion traffic for this pad uses **IF2** exclusively (flydigictl + our captures). Treat IF3 as unused for the Linux stack unless a future Space Station path requires it.
+
+## Multiplex on Linux
+
+`flydigi-vader4d` owns IF2 hidraw, publishes uinput, and serves `$XDG_RUNTIME_DIR/flydigi-vader4d.sock` (JSON lines). Companion UI/CLI never open hidraw while the daemon runs.
+
+## Firmware update (**S**, gated)
+
+Tree: `firmware/` + `FirmwareConsole.exe` + ISP DLLs. Not enabled in the Linux UI until DFU framing is verified. Prefer wired.
 
 ## Mode switching
 
-- DInput vs XInput vs Switch change USB identity and which interfaces appear (**C**/**I**).
-- Companion app mapping apply has separate DInput / XInput / NewXInput command factories (**S** strings).
+DInput vs XInput vs Switch change USB identity (**C**/**I**). This stack targets **PC/DInput** (`04b4:2412`).
+
+## Bluetooth
+
+See [bluetooth.md](bluetooth.md). Enumerator already accepts `Flydigi*VADER*` hidraw by name; VID:PID lock waits on a live capture.

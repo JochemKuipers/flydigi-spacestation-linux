@@ -8,49 +8,57 @@ Native Linux support for the Flydigi Vader 4 Pro **without** Xbox/XInput spoofin
 
 | Component | Status |
 |-----------|--------|
-| Diagnosis (dongle DInput) | Documented — see [docs/diagnosis.md](docs/diagnosis.md) |
-| Protocol notes | Partial — see [docs/protocol.md](docs/protocol.md) |
-| `flydigi-vader4d` (hidraw IF2 → uinput) | Implemented (test/install below) |
-| Space Station Linux GUI | Early shell — device + live V1 monitor |
+| Diagnosis (dongle DInput) | Done — [docs/diagnosis.md](docs/diagnosis.md) |
+| Protocol (IF2 cmds + config) | Live-verified — [docs/protocol.md](docs/protocol.md) |
+| `flydigi-vader4d` (uinput + socket) | Implemented |
+| Space Station Linux GUI | Profiles / sticks / lighting / rumble (firmware gated) |
 | Firmware updater | Locked until DFU RE completes |
-| Bluetooth | Not verified yet |
+| Bluetooth | Stubbed — needs live pair capture ([docs/bluetooth.md](docs/bluetooth.md)) |
 
 ## Requirements
 
 - Linux with `hidraw` + `uinput`
 - Python 3.11+ with `python-evdev` (`pacman -S python-evdev`)
-- Controller in **PC/DInput** mode (community: blue LED, FN/O+A)
+- GUI: `pacman -S pyside6`
+- Controller in **PC/DInput** mode (blue LED)
 - Dongle or wired USB `04b4:2412`
 
-## Quick start (driver)
+## Quick start
 
 ```bash
-# List IF0–IF3 hidraw nodes
-python3 driver/flydigi_vader4d.py --list
+# udev + user systemd unit (once)
+./scripts/install-driver.sh
 
-# Foreground daemon (creates uinput "Flydigi Vader 4 Pro")
+# Or foreground daemon
 python3 driver/flydigi_vader4d.py
 
-# Persist across reboot
-./scripts/install-driver.sh
-```
+# CLI against the daemon socket
+python3 app/flydigi_ctl.py info
+python3 app/flydigi_ctl.py rumble 200 200
+python3 app/flydigi_ctl.py led-set --r 0 --g 255 --b 0 --brightness 80
 
-Verify with `evtest` — you should see face buttons, C/Z, M1–M4, sticks, triggers, dpad. VID/PID remain `04b4:2412`.
-
-## Companion UI (early)
-
-```bash
-# deps: pacman -S pyside6 python-evdev
+# Companion UI
 python3 app/spacestation_linux.py
-# or CLI monitor:
-python3 app/monitor_v1.py
 ```
 
-## Space Station extract
+The daemon creates a uinput device named **Flydigi Vader 4 Pro** (VID/PID stay `04b4:2412`) and listens on `$XDG_RUNTIME_DIR/flydigi-vader4d.sock`.
 
-Installer is Inno Setup **7** (stock `innoextract` 1.9 cannot unpack it). Extracted via Wine into `vendor/spacestation-4.2.2.3/app/` (gitignored). Stack: Electron 36 UI + NativeAOT-like `SpaceStationService.exe` + `hidapi.dll` + firmware tools.
+## Architecture
+
+```
+USB IF2 hidraw ──► flydigi-vader4d ──► uinput (games)
+                       │
+                       └── Unix socket ──► spacestation_linux / flydigi_ctl
+```
+
+IF2 is exclusive: only the daemon opens it. The GUI never fights the driver for hidraw.
 
 ## Docs
 
 - [docs/diagnosis.md](docs/diagnosis.md) — why stock Linux DInput looks broken
-- [docs/protocol.md](docs/protocol.md) — report map and config notes
+- [docs/protocol.md](docs/protocol.md) — V1 report + IF2 command/config map
+- [docs/bluetooth.md](docs/bluetooth.md) — BT pairing / capture checklist
+
+## Space Station extract
+
+Installer is Inno Setup **7**. Extracted via Wine into `vendor/spacestation-4.2.2.3/app/` (gitignored). Stack: Electron 36 + NativeAOT `SpaceStationService.exe`.
