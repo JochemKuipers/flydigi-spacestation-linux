@@ -35,17 +35,11 @@ If BlueZ shows Connected but **no input events**:
 
 ## BT button map (daemon)
 
-Kernel `Flydigi VADER4P` exposes extras as consumer keys / HID bits — not Xbox paddles.
+Calibrated map: `flydigi/bt_button_map.json` (from `scripts/bt-calibrate-buttons.py`).
 
-| Control | Source (approx.) |
-|---------|------------------|
-| A/B/X/Y, LB/RB, Start/Select, sticks, hat, LT/RT | Standard gamepad |
-| M1–M4 | `KEY_EJECTCD` / `CHANNELUP` / `CHANNELDOWN` / `TV` |
-| C / Z | `KEY_CAMERA` / `KEY_RED` (provisional) |
-| Guide / FN | `KEY_ENTER`/`WWW` / `BTN_0`/`PROGRAM` (provisional) |
-
-`BTN_TL2`/`TR2` are digital trigger clicks — **not** C/Z (that misfire is fixed).
-Daemon must open `VADER4P`, never its own uinput clone (`d7d7:0041`).
+Extras are Consumer Control / misc keys on the wire (`Z` → `KEY_ENTER`, etc.);
+the daemon remaps them to normal gamepad buttons and **grabs** the kernel node
+so `KEY_ENTER` does not type into the desktop. LT=`ABS_BRAKE`, RT=`ABS_GAS`.
 
 ## XInput — white LED (captured)
 

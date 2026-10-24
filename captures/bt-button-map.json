@@ -1,0 +1,322 @@
+{
+  "device": "Flydigi VADER4P",
+  "vid_pid": "d7d7:0041",
+  "controls": {
+    "a": {
+      "ev_keys": {
+        "BTN_A": 1
+      },
+      "hid_btn_bits": 1,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "10000000",
+      "samples": 1
+    },
+    "b": {
+      "ev_keys": {
+        "BTN_B": 1
+      },
+      "hid_btn_bits": 2,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "20000000",
+      "samples": 1
+    },
+    "x": {
+      "ev_keys": {
+        "BTN_NORTH": 1
+      },
+      "hid_btn_bits": 4,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "40000000",
+      "samples": 1
+    },
+    "y": {
+      "ev_keys": {
+        "BTN_WEST": 1
+      },
+      "hid_btn_bits": 8,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "80000000",
+      "samples": 1
+    },
+    "lb": {
+      "ev_keys": {
+        "BTN_TL": 1
+      },
+      "hid_btn_bits": 16,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00010000",
+      "samples": 1
+    },
+    "rb": {
+      "ev_keys": {
+        "BTN_TR": 1
+      },
+      "hid_btn_bits": 32,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00020000",
+      "samples": 1
+    },
+    "select": {
+      "ev_keys": {
+        "BTN_SELECT": 1
+      },
+      "hid_btn_bits": 256,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00100000",
+      "samples": 1
+    },
+    "start": {
+      "ev_keys": {
+        "BTN_START": 1
+      },
+      "hid_btn_bits": 512,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00200000",
+      "samples": 1
+    },
+    "ls": {
+      "ev_keys": {
+        "BTN_THUMBL": 1
+      },
+      "hid_btn_bits": 1024,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00400000",
+      "samples": 3
+    },
+    "rs": {
+      "ev_keys": {
+        "BTN_THUMBR": 1
+      },
+      "hid_btn_bits": 2048,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00800000",
+      "samples": 6
+    },
+    "lt": {
+      "ev_keys": {
+        "BTN_TL2": 1
+      },
+      "hid_btn_bits": 64,
+      "hid_cons_bits": 16711680,
+      "hid_hat": 0,
+      "abs": {
+        "ABS_BRAKE": 0
+      },
+      "raw9_12": "00040000",
+      "samples": 10
+    },
+    "rt": {
+      "ev_keys": {
+        "BTN_TR2": 1
+      },
+      "hid_btn_bits": 128,
+      "hid_cons_bits": 0,
+      "hid_hat": 0,
+      "abs": {
+        "ABS_GAS": 0
+      },
+      "raw9_12": "00080000",
+      "samples": 9
+    },
+    "hat_up": {
+      "ev_keys": {},
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 0,
+      "hid_hat": 1,
+      "abs": {
+        "ABS_HAT0Y": 0
+      },
+      "raw9_12": "01000000",
+      "samples": 1
+    },
+    "hat_right": {
+      "ev_keys": {},
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 0,
+      "hid_hat": 3,
+      "abs": {
+        "ABS_HAT0X": 0
+      },
+      "raw9_12": "03000000",
+      "samples": 1
+    },
+    "hat_down": {
+      "ev_keys": {},
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 0,
+      "hid_hat": 5,
+      "abs": {
+        "ABS_HAT0Y": 0
+      },
+      "raw9_12": "05000000",
+      "samples": 3
+    },
+    "hat_left": {
+      "ev_keys": {},
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 0,
+      "hid_hat": 7,
+      "abs": {
+        "ABS_HAT0X": 0
+      },
+      "raw9_12": "07000000",
+      "samples": 1
+    },
+    "c": {
+      "ev_keys": {
+        "BTN_0": 1
+      },
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 1,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00000100",
+      "samples": 1
+    },
+    "z": {
+      "ev_keys": {
+        "KEY_ENTER": 1
+      },
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 2,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00000200",
+      "samples": 1
+    },
+    "m1": {
+      "ev_keys": {
+        "KEY_EJECTCD": 1
+      },
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 4,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00000400",
+      "samples": 1
+    },
+    "m2": {
+      "ev_keys": {
+        "KEY_CHANNELUP": 1
+      },
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 8,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00000800",
+      "samples": 1
+    },
+    "m3": {
+      "ev_keys": {
+        "KEY_CHANNELDOWN": 1
+      },
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 16,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00001000",
+      "samples": 1
+    },
+    "m4": {
+      "ev_keys": {
+        "KEY_TV": 1
+      },
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 32,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00002000",
+      "samples": 1
+    },
+    "guide": {
+      "ev_keys": {
+        "KEY_RED": 1
+      },
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 32768,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00000080",
+      "samples": 1
+    },
+    "fn": {
+      "ev_keys": {
+        "KEY_CAMERA": 1
+      },
+      "hid_btn_bits": 0,
+      "hid_cons_bits": 128,
+      "hid_hat": 0,
+      "abs": {},
+      "raw9_12": "00008000",
+      "samples": 1
+    }
+  },
+  "derived": {
+    "btn_bit": {
+      "a": 0,
+      "b": 1,
+      "x": 2,
+      "y": 3,
+      "lb": 4,
+      "rb": 5,
+      "select": 8,
+      "start": 9,
+      "ls": 10,
+      "rs": 11,
+      "lt": 6,
+      "rt": 7
+    },
+    "cons_bit": {
+      "c": 0,
+      "z": 1,
+      "m1": 2,
+      "m2": 3,
+      "m3": 4,
+      "m4": 5,
+      "guide": 15,
+      "fn": 7
+    },
+    "key_map": {
+      "BTN_A": "a",
+      "BTN_B": "b",
+      "BTN_NORTH": "x",
+      "BTN_WEST": "y",
+      "BTN_TL": "lb",
+      "BTN_TR": "rb",
+      "BTN_SELECT": "select",
+      "BTN_START": "start",
+      "BTN_THUMBL": "ls",
+      "BTN_THUMBR": "rs",
+      "BTN_TL2": "lt",
+      "BTN_TR2": "rt",
+      "BTN_0": "c",
+      "KEY_ENTER": "z",
+      "KEY_EJECTCD": "m1",
+      "KEY_CHANNELUP": "m2",
+      "KEY_CHANNELDOWN": "m3",
+      "KEY_TV": "m4",
+      "KEY_RED": "guide",
+      "KEY_CAMERA": "fn"
+    }
+  }
+}

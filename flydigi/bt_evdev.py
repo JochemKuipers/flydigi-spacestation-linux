@@ -1,7 +1,8 @@
 """Bridge BlueZ 'Flydigi VADER4P' (d7d7:0041) into our report shape.
 
 Prefers the kernel hid-generic node (not our own uinput republish). Reads
-hidraw when possible for C/Z/M/Guide; falls back to evdev for sticks/triggers.
+hidraw for calibrated button bits; evdev for sticks/triggers. Grabs the
+kernel node so KEY_ENTER (Z) cannot type into the session.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from pathlib import Path
 from evdev import InputDevice, ecodes
 
 from .bt_hid_report import BtHidReport, hat_from_xy, parse_bt_hid_report
+from .bt_map import key_name_map, load_bt_map
 from .enumerate import BT_PID, BT_VID
 
 
@@ -40,34 +42,27 @@ class BtEvdevState:
             }
 
 
-# Face / shoulder / menu from kernel gamepad bits. Do NOT map TL2/TR2 → C/Z
-# (those fire with analog triggers on this firmware).
-BTN_FROM_EV = {
-    ecodes.BTN_SOUTH: "a",
-    ecodes.BTN_EAST: "b",
-    ecodes.BTN_NORTH: "x",
-    ecodes.BTN_WEST: "y",
-    ecodes.BTN_TL: "lb",
-    ecodes.BTN_TR: "rb",
-    ecodes.BTN_SELECT: "select",
-    ecodes.BTN_START: "start",
-    ecodes.BTN_THUMBL: "ls",
-    ecodes.BTN_THUMBR: "rs",
-}
+def _build_key_from_ev() -> dict[int, str]:
+    """Map evdev key codes → our names using calibrated KEY_* strings."""
+    name_to_code: dict[str, int] = {}
+    for table in (ecodes.KEY, ecodes.BTN):
+        for code, names in table.items():
+            if isinstance(code, str):
+                continue
+            if isinstance(names, tuple):
+                for n in names:
+                    name_to_code[n] = code
+            else:
+                name_to_code[str(names)] = code
+    out: dict[int, str] = {}
+    for key_name, control in key_name_map().items():
+        code = name_to_code.get(key_name)
+        if code is not None:
+            out[code] = control
+    return out
 
-# Consumer-page keys hid-generic emits for the extra Flydigi controls.
-KEY_FROM_EV = {
-    ecodes.KEY_EJECTCD: "m1",
-    ecodes.KEY_CHANNELUP: "m2",
-    ecodes.KEY_CHANNELDOWN: "m3",
-    ecodes.KEY_TV: "m4",
-    ecodes.KEY_CAMERA: "c",
-    ecodes.KEY_RED: "z",
-    ecodes.KEY_ENTER: "guide",
-    ecodes.BTN_0: "fn",
-    ecodes.KEY_PROGRAM: "fn",
-    ecodes.KEY_WWW: "guide",
-}
+
+KEY_FROM_EV = _build_key_from_ev()
 
 
 def _scale_stick(v: int, vmin: int, vmax: int) -> int:
@@ -134,20 +129,37 @@ class BtEvdevReader:
         self.state = BtEvdevState()
         self._hid_fd: int | None = None
         self._hid_path = find_bt_hidraw()
+        self._grabbed = False
         if self._hid_path is not None:
             try:
                 self._hid_fd = os.open(self._hid_path, os.O_RDONLY | os.O_NONBLOCK)
             except OSError:
                 self._hid_fd = None
+        try:
+            self.dev.grab()
+            self._grabbed = True
+        except OSError:
+            self._grabbed = False
+        meta = load_bt_map()
+        print(
+            f"flydigi-vader4d: BT map {meta.get('_path') or '(builtin defaults)'} "
+            f"grab={'yes' if self._grabbed else 'no'}",
+            flush=True,
+        )
         self._pull_abs()
 
     def fileno(self) -> int:
-        # Prefer hidraw for select when open — richer button bits.
         if self._hid_fd is not None:
             return self._hid_fd
         return self.dev.fd
 
     def close(self) -> None:
+        if self._grabbed:
+            try:
+                self.dev.ungrab()
+            except OSError:
+                pass
+            self._grabbed = False
         if self._hid_fd is not None:
             try:
                 os.close(self._hid_fd)
@@ -159,13 +171,14 @@ class BtEvdevReader:
         d = self.dev
         st = self.state
         try:
+            # Calibrated: LT=ABS_BRAKE, RT=ABS_GAS on this firmware.
             for code, attr, scale in (
                 (ecodes.ABS_X, "lx", True),
                 (ecodes.ABS_Y, "ly", True),
                 (ecodes.ABS_Z, "rx", True),
                 (ecodes.ABS_RZ, "ry", True),
-                (ecodes.ABS_GAS, "lt", False),
-                (ecodes.ABS_BRAKE, "rt", False),
+                (ecodes.ABS_BRAKE, "lt", False),
+                (ecodes.ABS_GAS, "rt", False),
                 (ecodes.ABS_HAT0X, "hat_x", False),
                 (ecodes.ABS_HAT0Y, "hat_y", False),
             ):
@@ -178,12 +191,9 @@ class BtEvdevReader:
             pass
 
     def pump(self) -> BtHidReport | None:
-        """Read hidraw and/or evdev; return a snapshot if anything changed."""
-        changed = False
         st = self.state
         assert st.buttons is not None
 
-        # 1) hidraw path — authoritative for extras
         if self._hid_fd is not None:
             try:
                 r, _, _ = select.select([self._hid_fd], [], [], 0)
@@ -200,9 +210,7 @@ class BtEvdevReader:
                 if data:
                     rep = parse_bt_hid_report(data)
                     if rep is not None:
-                        # Keep LT/RT from evdev abs if hid tail is unreliable.
                         self._drain_evdev()
-                        buttons = dict(rep.buttons)
                         return BtHidReport(
                             raw=rep.raw,
                             lx=rep.lx,
@@ -214,19 +222,16 @@ class BtEvdevReader:
                             hat_x=rep.hat_x,
                             hat_y=rep.hat_y,
                             hat=rep.hat or hat_from_xy(rep.hat_x, rep.hat_y),
-                            buttons=buttons,
+                            buttons=dict(rep.buttons),
                         )
 
-        # 2) evdev-only fallback
         try:
             r, _, _ = select.select([self.dev.fd], [], [], 0)
         except (ValueError, OSError):
             return None
         if not r:
             return None
-        if self._drain_evdev():
-            changed = True
-        if not changed:
+        if not self._drain_evdev():
             return None
         return BtHidReport(
             raw=b"",
@@ -254,7 +259,7 @@ class BtEvdevReader:
             return False
         for e in events:
             if e.type == ecodes.EV_KEY:
-                name = BTN_FROM_EV.get(e.code) or KEY_FROM_EV.get(e.code)
+                name = KEY_FROM_EV.get(e.code)
                 if name is not None:
                     st.buttons[name] = e.value != 0
                     changed = True
@@ -275,10 +280,10 @@ class BtEvdevReader:
                     info = self.dev.absinfo(ecodes.ABS_RZ)
                     st.ry = _scale_stick(e.value, info.min, info.max)
                     changed = True
-                elif e.code == ecodes.ABS_GAS:
+                elif e.code == ecodes.ABS_BRAKE:
                     st.lt = int(e.value)
                     changed = True
-                elif e.code == ecodes.ABS_BRAKE:
+                elif e.code == ecodes.ABS_GAS:
                     st.rt = int(e.value)
                     changed = True
                 elif e.code == ecodes.ABS_HAT0X:
