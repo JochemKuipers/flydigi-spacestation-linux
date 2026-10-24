@@ -1,0 +1,28 @@
+{
+  "device_code": "f4",
+  "product": "Vader 4 Pro",
+  "catalog_version": "6.9.3.3",
+  "catalog_name": "VADER4_6.9.3.3",
+  "catalog_date": "2024-03-08",
+  "catalog_desc": "\u4f18\u5316\u90e8\u5206\u60c5\u51b5\u4e0b\u6447\u6746\u65e0\u6cd5\u6253\u6ee1\u7684\u95ee\u9898 (notes dated 2024-12-09)",
+  "source_api": "https://api.flydigi.com/android/v3/Firmwares/pcNew?type=f4",
+  "source_url": "https://tencent-android.cdn.flydigi.com/firmware/F4/F4_Telink87_Gamepad_6933_1025.zip",
+  "archived_at": "2026-10-24T20:51:53.870782+00:00",
+  "update_kind": "full_image",
+  "update_kind_notes": [
+    "Single .bin in zip; embeds full product strings (Flydigi VADER4 / VADER4P, Telink Remote)",
+    "Catalog exposes absolute version URLs, not patch chains",
+    "SS3 UI string WriteFlashProgram; 'delta' hits are WPF DragDelta only",
+    "KNLT Telink container (~158 KiB), comparable to full RF/dongle images not tiny diffs"
+  ],
+  "files": {
+    "F4_Telink87_Gamepad_6933_1025.zip": {
+      "bytes": 95553,
+      "sha256": "82447d899e48d1f99b7f11279e2e1f5d1c9c5ad360c0b35d2a2eb2fe352bdc5a"
+    },
+    "F4_Telink87_Gamepad_6933_1025.bin": {
+      "bytes": 158244,
+      "sha256": "b53067d457b9f5357f7e4729d098ab576ad5050859941c9e92f8f6abae6b7b85"
+    }
+  }
+}

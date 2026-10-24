@@ -8,6 +8,14 @@ captures/*.reasnap
 *.exe
 Flydigi Space Station_setup_*.exe
 
+# Archived firmware dumps (full images; intentionally tracked)
+!archive/
+!archive/**/
+!archive/**/*.bin
+!archive/**/*.zip
+!archive/**/*.json
+!archive/**/SHA256SUMS
+
 # Keep docs and small capture text / descriptors
 !captures/*.txt
 !captures/report-descriptors/

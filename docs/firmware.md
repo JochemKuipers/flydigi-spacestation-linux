@@ -89,10 +89,16 @@ Live response (2026-10-24):
 
 Unpacked image: single `F4_Telink87_Gamepad_6933_1025.bin` (158 244 B), lead
 bytes `… KNLT …` (Telink-family container — same magic as F5 RF/dongle bins).
-Saved under `vendor/firmware-f4/` (gitignored).
 
-Flash still gated until enter-ISP IF2 framing is recovered; fetching the image
-does **not** enable the Linux updater UI.
+**Update kind: full image** (not incremental). Archived in-repo at
+[`archive/firmware/f4/6.9.3.3/`](../archive/firmware/f4/6.9.3.3/) with
+`manifest.json` + SHA256. SS3 flasher (`FmUpgradeSwViewModel.ota_write`)
+streams the whole bin over HID `04b4:2412` usage `FFEF`, report ID `5`, in
+16-byte CRC’d cells — see `archive/firmware/f4/README.md` and decompile
+notes under `ss3-flasher-decompile/`.
+
+Linux flash UI still gated until enter-upgrade / abort paths are verified on
+hardware; having the full image + OTA framing is necessary but not sufficient.
 
 ## Native helpers (**O** PE exports)
 
