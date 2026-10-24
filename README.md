@@ -37,7 +37,7 @@ python3 driver/flydigi_vader4d.py
 
 # CLI against the daemon socket
 python3 app/flydigi_ctl.py info
-python3 app/flydigi_ctl.py rumble 200 200
+python3 app/flydigi_ctl.py rumble 255 255 --ms 1500
 python3 app/flydigi_ctl.py led-set --r 0 --g 255 --b 0 --brightness 80
 
 # Companion UI

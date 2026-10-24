@@ -7,6 +7,7 @@ kernel node so KEY_ENTER (Z) cannot type into the session.
 
 from __future__ import annotations
 
+import errno
 import os
 import select
 from dataclasses import dataclass
@@ -253,11 +254,16 @@ class BtEvdevReader:
         assert st.buttons is not None
         try:
             events = self.dev.read()
+            # Some evdev builds yield lazily; wrap iteration too.
+            event_list = list(events)
         except BlockingIOError:
             return False
-        except OSError:
-            return False
-        for e in events:
+        except OSError as exc:
+            # EAGAIN while select said readable — ignore. ENODEV → reconnect.
+            if exc.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
+                return False
+            raise
+        for e in event_list:
             if e.type == ecodes.EV_KEY:
                 name = KEY_FROM_EV.get(e.code)
                 if name is not None:

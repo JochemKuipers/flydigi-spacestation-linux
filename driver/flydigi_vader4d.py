@@ -560,7 +560,16 @@ class Daemon:
             f"flydigi-vader4d: USB {iface.hidraw} (iface {iface.interface_number})",
             flush=True,
         )
-        self.dev = DInputDevice(iface.hidraw)
+        try:
+            self.dev = DInputDevice(iface.hidraw)
+        except PermissionError as exc:
+            print(
+                f"flydigi-vader4d: cannot open {iface.hidraw} ({exc}); "
+                "check udev / plug cycle — retrying…",
+                flush=True,
+            )
+            time.sleep(1.0)
+            return
         if self.ui is None:
             self.ui = UInput(
                 CAP,
@@ -672,6 +681,7 @@ class Daemon:
         return 0
 
     def _reconnect(self) -> None:
+        self._rumble_until = 0.0
         if self.dev:
             try:
                 self.dev.close()
@@ -690,7 +700,16 @@ class Daemon:
             except OSError:
                 pass
             self.ui = None
-        self.open_device()
+        while not self.stop:
+            try:
+                self.open_device()
+            except Exception as exc:  # noqa: BLE001
+                print(f"flydigi-vader4d: reconnect wait ({exc})", flush=True)
+                time.sleep(0.5)
+                continue
+            if self.dev is not None or self.bt is not None:
+                return
+            time.sleep(0.5)
 
     def _cleanup(self) -> None:
         for c in list(self._clients):
