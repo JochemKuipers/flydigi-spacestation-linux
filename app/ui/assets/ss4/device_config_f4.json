@@ -1,0 +1,403 @@
+{
+  "source": "Space Station 4.2.2.3",
+  "asar_path": "resources/app.asar \u2192 device_config_f4-*.js",
+  "device": "f4",
+  "viewBox": {
+    "width": 508,
+    "height": 421
+  },
+  "hotspots": [
+    {
+      "id": 240,
+      "name": "JsLeft",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 65,
+        "height": 65
+      },
+      "position": {
+        "x": 100,
+        "y": 136
+      }
+    },
+    {
+      "id": 241,
+      "name": "JsRight",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 65,
+        "height": 65
+      },
+      "position": {
+        "x": 285,
+        "y": 200
+      }
+    },
+    {
+      "id": 14,
+      "name": "Thl",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 32,
+        "height": 32
+      },
+      "position": {
+        "x": 116.5,
+        "y": 152.5
+      }
+    },
+    {
+      "id": 15,
+      "name": "Thr",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 32,
+        "height": 32
+      },
+      "position": {
+        "x": 301,
+        "y": 217
+      }
+    },
+    {
+      "id": 4,
+      "name": "A",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 32,
+        "height": 32
+      },
+      "position": {
+        "x": 364,
+        "y": 188
+      }
+    },
+    {
+      "id": 5,
+      "name": "B",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 32,
+        "height": 32
+      },
+      "position": {
+        "x": 393,
+        "y": 159
+      }
+    },
+    {
+      "id": 7,
+      "name": "X",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 32,
+        "height": 32
+      },
+      "position": {
+        "x": 335,
+        "y": 159
+      }
+    },
+    {
+      "id": 8,
+      "name": "Y",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 32,
+        "height": 32
+      },
+      "position": {
+        "x": 364,
+        "y": 130
+      }
+    },
+    {
+      "id": 0,
+      "name": "Up",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 24,
+        "height": 24
+      },
+      "position": {
+        "x": 186,
+        "y": 194
+      }
+    },
+    {
+      "id": 1,
+      "name": "Right",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 24,
+        "height": 24
+      },
+      "position": {
+        "x": 214,
+        "y": 221
+      }
+    },
+    {
+      "id": 2,
+      "name": "Down",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 24,
+        "height": 24
+      },
+      "position": {
+        "x": 186,
+        "y": 248
+      }
+    },
+    {
+      "id": 3,
+      "name": "Left",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 24,
+        "height": 24
+      },
+      "position": {
+        "x": 160,
+        "y": 221
+      }
+    },
+    {
+      "id": 12,
+      "name": "Lt",
+      "shape": "roundRect",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 40,
+        "height": 48
+      },
+      "position": {
+        "x": 28,
+        "y": 4
+      }
+    },
+    {
+      "id": 10,
+      "name": "Lb",
+      "shape": "roundRect",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 75,
+        "height": 28
+      },
+      "position": {
+        "x": 28,
+        "y": 58
+      }
+    },
+    {
+      "id": 13,
+      "name": "Rt",
+      "shape": "roundRect",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 40,
+        "height": 48
+      },
+      "position": {
+        "x": 440,
+        "y": 4
+      }
+    },
+    {
+      "id": 11,
+      "name": "Rb",
+      "shape": "roundRect",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 75,
+        "height": 28
+      },
+      "position": {
+        "x": 405,
+        "y": 58
+      }
+    },
+    {
+      "id": 16,
+      "name": "C",
+      "shape": "circle",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 26,
+        "height": 26
+      },
+      "position": {
+        "x": 379,
+        "y": 239
+      }
+    },
+    {
+      "id": 17,
+      "name": "Z",
+      "shape": "circle",
+      "rotation": 0,
+      "clickable": true,
+      "size": {
+        "width": 26,
+        "height": 26
+      },
+      "position": {
+        "x": 408,
+        "y": 210
+      }
+    },
+    {
+      "id": 6,
+      "name": "Select",
+      "shape": "roundRect",
+      "clickable": true,
+      "rotation": 41,
+      "size": {
+        "width": 40,
+        "height": 18
+      },
+      "position": {
+        "x": 171,
+        "y": 118
+      }
+    },
+    {
+      "id": 9,
+      "name": "Start",
+      "shape": "roundRect",
+      "clickable": true,
+      "rotation": -41,
+      "size": {
+        "width": 40,
+        "height": 18
+      },
+      "position": {
+        "x": 296,
+        "y": 118
+      }
+    },
+    {
+      "id": 27,
+      "name": "Home",
+      "shape": "roundRect",
+      "clickable": false,
+      "rotation": 0,
+      "size": {
+        "width": 28,
+        "height": 12
+      },
+      "position": {
+        "x": 260,
+        "y": 275
+      }
+    },
+    {
+      "id": 24,
+      "name": "Fn",
+      "shape": "roundRect",
+      "clickable": false,
+      "rotation": 0,
+      "size": {
+        "width": 28,
+        "height": 12
+      },
+      "position": {
+        "x": 225,
+        "y": 275
+      }
+    },
+    {
+      "id": 18,
+      "name": "M1",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 41,
+        "height": 41
+      },
+      "position": {
+        "x": 324,
+        "y": 345
+      }
+    },
+    {
+      "id": 19,
+      "name": "M2",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 41,
+        "height": 41
+      },
+      "position": {
+        "x": 149,
+        "y": 344
+      }
+    },
+    {
+      "id": 20,
+      "name": "M3",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 41,
+        "height": 41
+      },
+      "position": {
+        "x": 263,
+        "y": 344
+      }
+    },
+    {
+      "id": 21,
+      "name": "M4",
+      "clickable": true,
+      "rotation": 0,
+      "size": {
+        "width": 41,
+        "height": 41
+      },
+      "position": {
+        "x": 206,
+        "y": 344
+      }
+    }
+  ],
+  "led_path": [
+    [168.0, 88.0],
+    [256.5, 162.0],
+    [340.0, 88.0]
+  ],
+  "wireframe": "device_wireframe_f4.svg"
+}

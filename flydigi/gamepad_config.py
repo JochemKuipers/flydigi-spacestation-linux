@@ -1,7 +1,9 @@
-"""Onboard gamepad config blob (IF2 cmd 235/234) — V2 layout from flydigictl.
+"""Onboard gamepad config blob (IF2 cmd 235/234) — V2 layout.
 
-Vader 4 Pro live dump is 520 bytes (52 parcels × 10). Layout offsets match
-`getConfigListsV2` in pipe01/flydigictl.
+Vader 4 Pro live dump is 520 bytes (52 parcels × 10). Offsets match Space Station
+4 / flydigictl `getConfigListsV2`. Key slot indices 0–31 align with SS4
+`device_config_f4` hotspot `id` values when id < 32 (JsLeft/JsRight use 240/241
+UI-only ids and are not remapped via this blob).
 """
 
 from __future__ import annotations

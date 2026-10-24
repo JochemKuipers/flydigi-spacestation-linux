@@ -11,8 +11,8 @@ Native Linux support for the Flydigi Vader 4 Pro **without** Xbox/XInput spoofin
 | Diagnosis (dongle DInput) | Done — [docs/diagnosis.md](docs/diagnosis.md) |
 | Protocol (IF2 cmds + config) | Live-verified — [docs/protocol.md](docs/protocol.md) |
 | `flydigi-vader4d` (uinput + socket) | Implemented |
-| Space Station Linux GUI | Profiles / sticks / lighting / rumble (firmware gated) |
-| Firmware updater | Locked — architecture mapped, f4 images/ISP enter still open ([docs/firmware.md](docs/firmware.md)) |
+| Space Station Linux GUI | Themed companion (`app/ui/`) — profiles / sticks / lighting / rumble / firmware |
+| Firmware updater | Working — USB IF3 HID OTA ([docs/firmware.md](docs/firmware.md)); wired only |
 | Bluetooth DInput (blue) | Input working — calibrated map ([docs/bluetooth.md](docs/bluetooth.md)) |
 | Bluetooth XInput (white) | Xbox `045e:02e0` spoof — out of scope |
 
@@ -42,6 +42,10 @@ python3 app/flydigi_ctl.py led-set --r 0 --g 255 --b 0 --brightness 80
 
 # Companion UI
 python3 app/spacestation_linux.py
+
+# Firmware (wired DInput; IF3) — or use the Firmware tab
+python3 scripts/ota-flash.py          # prompts YES
+python3 scripts/ota-dry-run.py        # start frame only
 ```
 
 The daemon creates a uinput device named **Flydigi Vader 4 Pro** and listens on `$XDG_RUNTIME_DIR/flydigi-vader4d.sock` (USB keeps `04b4:2412`; BT publishes `d7d7:0041`).
@@ -62,7 +66,7 @@ USB IF2 is exclusive to the daemon. On BT the daemon grabs `Flydigi VADER4P` so 
 - [docs/diagnosis.md](docs/diagnosis.md) — why stock Linux DInput looks broken
 - [docs/protocol.md](docs/protocol.md) — V1 report + IF2 command/config map
 - [docs/bluetooth.md](docs/bluetooth.md) — BT pairing / capture checklist
-- [docs/firmware.md](docs/firmware.md) — DFU / FirmwareConsole RE (gated)
+- [docs/firmware.md](docs/firmware.md) — F4 HID OTA (IF3) + archived image
 
 ## Space Station extract
 

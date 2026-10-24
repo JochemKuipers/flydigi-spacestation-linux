@@ -50,20 +50,28 @@ Responses are non-`04 FE` packets; many put the echoed command ID in byte `[15]`
 
 ### LED config blob
 
-Header 20 bytes + up to 16×10 RGB units. Modes: 0 off, 1 streamlined, 2 breathing, 3 gradient, 4 feedback, 5 steady (**C**). Write via parcelized cmd 231/51.
+Header 20 bytes + up to 16×10 RGB units (one group per LED; units = animation
+keyframes). `loop_start`/`loop_end` select the active frame range; `loop_time`
+is step delay (higher = slower). Modes match SS4 `LED_TYPE_*`: 0 off/unknown,
+1 FLOW, 2 BREATH, 3 GRADIENT, 4 FEEDBACK, 5 ON, 6 Close (**SS4** / **C**).
+Gradient rainbow uses 7 phase-shifted frames (`loop_end=6`) — same packing as
+SS4 cooler `RGB_EFFECT_RAINBOW`. Write via parcelized cmd 231/51.
 
-### Gamepad config blob (V2 offsets, **C**/live **O**)
+### Gamepad config blob (V2 offsets, **SS4**/**C**/live **O**)
+
+Same onboard profile blob Space Station 4 reads/writes for F4 (slot `config_id`,
+currently 0 in our daemon). UI hotspots: `app/ui/assets/ss4/device_config_f4.json`.
 
 | Range | Field |
 |-------|-------|
 | 0–1 | Version |
 | 2 | Package length (+1 on wire) |
 | 3–12 | Legacy LED (10 B) |
-| 13–108 | Key map (32×3: map_id, turbo_type, turbo); `255` = native |
-| 109–122 | Stick curves (2×7) |
+| 13–108 | Key map (32×3: map_id, turbo_type, turbo); `255` = native; slot id = SS4 key id |
+| 109–122 | Stick curves (2×7: type, zero/deadzone, p0x, p0y, p1x, p1y, end) |
 | 123–136 | Trigger curves (2×7) |
 | 137–144 | Motion |
-| 145–153 | Motors |
+| 145–153 | Motors (main_switch, L/R type/min/max/scale) |
 | 154+ | Trigger motors / lunpan / macros / padding → 520 B total |
 
 ## IF3 (`0xFFEE`)

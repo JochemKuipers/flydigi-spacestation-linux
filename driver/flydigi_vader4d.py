@@ -32,8 +32,7 @@ from flydigi.dinput_proto import (
     DeviceInfo,
     LedConfig,
     encode_led_config,
-    off_led,
-    steady_led,
+    build_led,
 )
 from flydigi.bt_evdev import BtEvdevReader, find_bt_evdev
 from flydigi.bt_hid_report import BtHidReport, parse_bt_hid_report
@@ -115,6 +114,7 @@ def _info_dict(info: DeviceInfo) -> dict[str, Any]:
         "mac": info.device_mac.hex(),
         "transport": "usb",
         "hid": "04b4:2412",
+        "name": "Vader 4 Pro",
     }
 
 
@@ -139,13 +139,23 @@ def _report_dict(rep: V1Report | BtHidReport) -> dict[str, Any]:
 
 
 def _led_dict(cfg: LedConfig) -> dict[str, Any]:
-    color = cfg.groups[0][0] if cfg.groups and cfg.groups[0] else (0, 0, 0)
+    colors = []
+    groups = []
+    for g in (cfg.groups or [])[: max(1, int(cfg.rgb_num) or 5)]:
+        units = [list(u) for u in (g or [])[:10]]
+        groups.append(units)
+        colors.append(list(g[0]) if g else [0, 0, 0])
+    color = colors[0] if colors else [0, 0, 0]
     return {
         "mode": cfg.led_mode,
         "brightness": cfg.light_scale,
+        "loop_start": cfg.loop_start,
+        "loop_end": cfg.loop_end,
         "loop_time": cfg.loop_time,
         "rgb_num": cfg.rgb_num,
         "color": list(color),
+        "colors": colors,
+        "groups": groups,
     }
 
 
@@ -349,22 +359,14 @@ class Daemon:
         return {"ok": True, "led": _led_dict(led)}
 
     def _cmd_led_set(self, msg: dict[str, Any]) -> dict[str, Any]:
-        mode = int(msg.get("mode", LedConfig.MODE_STEADY))
-        brightness = int(msg.get("brightness", 80))
-        r = int(msg.get("r", 0))
-        g = int(msg.get("g", 0))
-        b = int(msg.get("b", 0))
-        if mode == LedConfig.MODE_OFF:
-            cfg = off_led(brightness)
-        else:
-            cfg = steady_led(r, g, b, brightness)
-            cfg.led_mode = mode
-            if mode == LedConfig.MODE_STREAMLINED:
-                cfg.loop_end = 5
-                cfg.loop_time = max(0, min(100, 100 - int(msg.get("speed", 50))))
-            elif mode == LedConfig.MODE_BREATHING:
-                cfg.loop_end = 5
-                cfg.loop_time = max(0, min(100, 100 - int(msg.get("speed", 40))))
+        cfg = build_led(
+            int(msg.get("mode", LedConfig.MODE_STEADY)),
+            r=int(msg.get("r", 0)),
+            g=int(msg.get("g", 0)),
+            b=int(msg.get("b", 0)),
+            brightness=int(msg.get("brightness", 80)),
+            speed=int(msg.get("speed", 50)),
+        )
         self._require_dev().write_led_config(cfg)
         return {"ok": True, "led": _led_dict(cfg)}
 
@@ -398,18 +400,24 @@ class Daemon:
             time.sleep(0.02)
 
     def _cmd_config_get(self) -> dict[str, Any]:
+        from flydigi.ss4_f4 import ss4_name_for_key_id
+
         cfg = self._fetch_config()
         return {
             "ok": True,
             "config": {
                 "version": cfg.version,
+                "package_length": cfg.package_length,
+                "profile_slot": 0,  # IF2 config_id currently fixed; SS4 uses same onboard blob
                 "keys": [
                     {
                         "id": k.key_id,
                         "name": k.name,
+                        "ss4_name": ss4_name_for_key_id(k.key_id),
                         "map_id": k.map_id,
                         "map_name": KEY_NAMES_SAFE(k.map_id),
                         "turbo": k.turbo,
+                        "turbo_type": k.turbo_type,
                         "remapped": k.is_remapped,
                     }
                     for k in cfg.keys

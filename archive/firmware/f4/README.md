@@ -84,8 +84,12 @@ index_lo, index_hi, payload[16], crc16_lo, crc16_hi
 
 `status==0` → OK.
 
-### Still gated for Linux flash UI
+### Live flash (2026-10-24, wired DInput)
 
-- Live verify enter + abort on **this** pad (wired only).
-- Confirm IF2 / usage `FFEF` is the same handle the daemon already uses.
-- No flash from the companion until that dry-run is done.
+| | |
+|--|--|
+| Scripts | `scripts/ota-dry-run.py` (start only), `scripts/ota-flash.py` (full) |
+| Channel | USB **IF3**, usage **`FFEF`**, report **5**, 64 B (daemon stays on IF2) |
+| Dry-run | Start OUT → report-5 IN echo |
+| Full reflash | Archived `6.9.3.3` same-version; ~36 s; device OTA success status; post `firmware=6.9.3.3` |
+| Safety | Flash always does start dry-run first (abort if no ACK). No version allowlist — older pads are the update audience. |

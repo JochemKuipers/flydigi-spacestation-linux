@@ -30,6 +30,7 @@ dist/
 build/
 *.egg-info/
 
-# IDE
+# IDE / agent
 .idea/
 .vscode/
+.claude/

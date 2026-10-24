@@ -71,13 +71,14 @@ class LedConfig:
     # 16 groups × 10 units × RGB — we only fill rgb_num groups
     groups: list[list[tuple[int, int, int]]] = field(default_factory=list)
 
-    # LedMode: 0 off, 1 streamlined, 2 breathing, 3 gradient, 4 feedback, 5 steady
-    MODE_OFF = 0
-    MODE_STREAMLINED = 1
+    # SS4 LED_TYPE_*: Unknown=0, FLOW=1, BREATH=2, GRADIENT=3, FEEDBACK=4, ON=5, Close=6, Default=7
+    MODE_OFF = 0  # treated as off by firmware; Close=6 also works
+    MODE_STREAMLINED = 1  # FLOW
     MODE_BREATHING = 2
     MODE_GRADIENT = 3
     MODE_FEEDBACK = 4
-    MODE_STEADY = 5
+    MODE_STEADY = 5  # ON
+    MODE_CLOSE = 6
 
 
 def encode_led_config(cfg: LedConfig) -> bytes:
@@ -131,26 +132,172 @@ def decode_led_config(data: bytes) -> LedConfig:
     return cfg
 
 
+def _groups_from_ss_table(table_idx: int, n: int = 5) -> list[list[tuple[int, int, int]]]:
+    """Copy official NewLedTypeDto.ledUnits[mode][led][frame][rgb]."""
+    from flydigi.ss4_led_tables import LED_UNITS
+
+    table = LED_UNITS[table_idx]
+    groups: list[list[tuple[int, int, int]]] = []
+    for led in range(n):
+        frames = [tuple(table[led][f]) for f in range(10)]  # type: ignore[misc]
+        groups.append(frames)  # type: ignore[arg-type]
+    return groups
+
+
+def _dim(color: tuple[int, int, int], factor: float = 0.8) -> tuple[int, int, int]:
+    return (
+        min(255, int(color[0] * factor)),
+        min(255, int(color[1] * factor)),
+        min(255, int(color[2] * factor)),
+    )
+
+
+def _zero_frames() -> list[tuple[int, int, int]]:
+    return [(0, 0, 0)] * 10
+
+
+def _create_led_units(colors: list[tuple[int, int, int]], dimming: bool) -> list[tuple[int, int, int]]:
+    """NewLedTypeDto.CreateLedUnits — breath: color on even frames, black on odd."""
+    out: list[tuple[int, int, int]] = []
+    for i in range(10):
+        if i % 2 == 0:
+            c = colors[min(i // 2, len(colors) - 1)]
+            out.append(_dim(c) if dimming else c)
+        else:
+            out.append((0, 0, 0))
+    return out
+
+
+def _create_led_units2(colors: list[tuple[int, int, int]], dimming: bool) -> list[tuple[int, int, int]]:
+    """NewLedTypeDto.CreateLedUnits2 — gradient: first two frames are the two colors."""
+    out: list[tuple[int, int, int]] = []
+    for i in range(10):
+        if i < 2 and i < len(colors):
+            out.append(_dim(colors[i]) if dimming else colors[i])
+        else:
+            out.append((0, 0, 0))
+    return out
+
+
+def _create_led_units3(colors: list[tuple[int, int, int]], dimming: bool) -> list[tuple[int, int, int]]:
+    """NewLedTypeDto.CreateLedUnits3 — feedback/steady: only frame 0 lit."""
+    c = colors[0] if colors else (0, 0, 0)
+    return [(_dim(c) if dimming else c)] + [(0, 0, 0)] * 9
+
+
+def _breath_groups_custom(color: tuple[int, int, int]) -> list[list[tuple[int, int, int]]]:
+    """Match GetLedGroupListByCustom Id=2 (5× same color)."""
+    colors = [color] * 5
+    return [
+        _create_led_units(colors, False),
+        _create_led_units(colors, True),
+        _zero_frames(),
+        _zero_frames(),
+        _create_led_units(colors, True),
+    ]
+
+
+def _gradient_groups_custom(c1: tuple[int, int, int], c2: tuple[int, int, int]) -> list[list[tuple[int, int, int]]]:
+    """Match GetLedGroupListByCustom Id=3."""
+    pair = [c1, c2]
+    return [_create_led_units2(pair, False) for _ in range(5)]
+
+
+def _feedback_groups_custom(color: tuple[int, int, int]) -> list[list[tuple[int, int, int]]]:
+    """Match GetLedGroupListByCustom Id=4."""
+    colors = [color]
+    return [
+        _create_led_units3(colors, False),
+        _create_led_units3(colors, True),
+        _zero_frames(),
+        _zero_frames(),
+        _create_led_units3(colors, True),
+    ]
+
+
+def _steady_groups_custom(color: tuple[int, int, int]) -> list[list[tuple[int, int, int]]]:
+    """Match GetLedGroupListByCustom Id=5."""
+    colors = [color]
+    return [_create_led_units3(colors, False) for _ in range(5)]
+
+
 def steady_led(r: int, g: int, b: int, brightness: int = 100) -> LedConfig:
     color = (r, g, b)
-    groups = [[color] + [(0, 0, 0)] * 9 for _ in range(5)]
     return LedConfig(
         led_mode=LedConfig.MODE_STEADY,
         rgb_num=5,
+        loop_start=0,
         loop_end=0,
+        loop_time=15,
         type=0,
         light_scale=max(0, min(100, brightness)),
-        groups=groups,
+        groups=_steady_groups_custom(color),
     )
 
 
 def off_led(brightness: int = 0) -> LedConfig:
+    # Official Close mode is LedMode=6 (not 0)
     return LedConfig(
-        led_mode=LedConfig.MODE_OFF,
+        led_mode=LedConfig.MODE_CLOSE,
         rgb_num=5,
+        loop_start=0,
         loop_end=0,
+        loop_time=15,
         light_scale=brightness,
-        groups=[[(0, 0, 0)] * 10 for _ in range(5)],
+        groups=_groups_from_ss_table(5, 5),
+    )
+
+
+def build_led(
+    mode: int,
+    *,
+    r: int = 0,
+    g: int = 0,
+    b: int = 0,
+    brightness: int = 80,
+    speed: int = 50,
+) -> LedConfig:
+    """Build NewLedConfig using Space Station's official F4 defaults.
+
+    Source: NewLedTypeDto.GetDefaultConfig / ledUnits / GetLedGroupListByCustom.
+    Moving rainbow is Flow (mode 1, loop_end=5) — not Gradient.
+    """
+    from flydigi.ss4_led_tables import MODE_DEFAULTS
+
+    brightness = max(0, min(100, int(brightness)))
+    # SS default LoopTime=15 at mid UI speed; higher speed → lower time
+    loop_time = max(5, min(40, round(15 * (150 - int(speed)) / 100)))
+    color = (int(r) & 0xFF, int(g) & 0xFF, int(b) & 0xFF)
+    n = 5
+
+    if mode in (LedConfig.MODE_OFF, LedConfig.MODE_CLOSE):
+        return off_led(brightness)
+
+    wire_mode = mode if mode in MODE_DEFAULTS else LedConfig.MODE_STEADY
+    meta = MODE_DEFAULTS[wire_mode]
+
+    if wire_mode == LedConfig.MODE_STREAMLINED:
+        # Exact official rainbow chase table — do not tint
+        groups = _groups_from_ss_table(int(meta["table"]), n)
+    elif wire_mode == LedConfig.MODE_BREATHING:
+        groups = _breath_groups_custom(color)
+    elif wire_mode == LedConfig.MODE_GRADIENT:
+        c2 = (max(0, 255 - color[0]), max(0, 255 - color[1]), max(0, 255 - color[2]))
+        groups = _gradient_groups_custom(color, c2)
+    elif wire_mode == LedConfig.MODE_FEEDBACK:
+        groups = _feedback_groups_custom(color)
+    else:
+        groups = _steady_groups_custom(color)
+
+    return LedConfig(
+        led_mode=wire_mode,
+        type=1 if wire_mode == LedConfig.MODE_FEEDBACK else 0,
+        rgb_num=n,
+        loop_start=0,
+        loop_end=int(meta["loop_end"]),
+        loop_time=loop_time,
+        light_scale=brightness,
+        groups=groups,
     )
 
 

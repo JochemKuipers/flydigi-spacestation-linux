@@ -104,12 +104,22 @@ Source: decompiled `FmUpgradeSwViewModel.ota_write` + `DongleCommand` /
 | Step | Behaviour |
 |------|-----------|
 | Image | Full Telink `KNLT` bin; size `@+24`, CRC `@size-4` |
-| Enter (Vader) | Ensure **DInput**; open HID `04b4:2412` usage **`FFEF`**, report **`5`**. SoftUpgrade `05 F5 07` is HSH/dongle path, not the default Vader flow. |
+| Enter (Vader) | Ensure **DInput**; open USB **IF3** (`04b4:2412` usage **`FFEF`**, report **`5`**, 64 B). Daemon uses IF2 (`FFA0`) — different node. SoftUpgrade `05 F5 07` is HSH/dongle path, not default Vader. |
 | Transfer | Chunked OUT: start `[2,2,0,1,FF…]`, then ≤3×`{index_le16, 16 B, crc16}`, finish with last-index + ones’-complement; ACK-driven on IN report 5 |
 | CRC16 | init `FFFF`, bit-wise with table `{0, 0xA001}` over `{index, payload}` |
 
-Linux flash UI still gated until enter + abort are live-verified on this pad
-(wired only).
+**Live flash (wired, 2026-10-24):** `scripts/ota-flash.py` same-version reflash of
+archived `6.9.3.3` on IF3 succeeded (~36 s, device success status, still
+`firmware=6.9.3.3`).
+
+**Pre-flash checks (default):**
+1. USB IF3 present; image size/CRC trailer sane
+2. **Start-frame dry-run** (open → start OUT → require report-5 IN → close, **no data**)
+3. Only then full write
+
+No version allowlist — older pads are the ones that need updates; the dry-run
+ACK is the gate. Full write was live-proven on `6.9.3.3`. `--no-preflight`
+skips step 2 (not recommended).
 
 ## Native helpers (**O** PE exports)
 
@@ -130,16 +140,13 @@ DLLs above (`jl_firmware_upgrade_x64.dll`, `WCH55xISPDLL.dll`, `Libraries\x64\ST
 Updater class names inside the binary (**S** strings): `CH375Updater`,
 `WCH59XUpdater`, `HidUpdater`, `IFirmwareUpdater`.
 
-## Entering upgrade mode (**S**, incomplete wire)
+## Entering upgrade mode
 
-`SpaceStationService` exposes `SwitchToFirmwareUpgradeModeCommandDInput` (and
-XInput variants). Electron issues `IpcCommandEnum_SwitchUsb` with
-`chipModule`/`chipType` before each F5 migration phase, waits for reconnect,
-then spawns FirmwareConsole.
+**F4 (this pad):** already-DInput + open IF3 (`FFEF`) is enough — live-proven.
+SoftUpgrade / XInput→OTA bytes exist for other products (see archive README).
 
-Exact IF2 OUT bytes for DInput enter-ISP are **not** recovered yet — required
-before any Linux flash attempt. Cooler SDK also has
-`SwitchToFirmwareUpgradeMode` (separate product path).
+**F5 / SS4:** `SwitchToFirmwareUpgradeMode` + `FirmwareConsole` / WCH / JL paths
+are a separate stack; not used for Vader 4 Pro’s Telink HID OTA.
 
 ## Image notes (**O**)
 
@@ -151,14 +158,9 @@ Sample headers from F5 `5.0` (for format triage only — **not** Vader 4 images)
 | `rf_chip_V1043.bin` / `dongle_chip_V0483.bin` | ~27 k | `KNLT` magic |
 | `si_chip_V3605.ufw` | 355 104 | opaque UFW (JL CRC APIs) |
 
-## Gate checklist (must all clear before enabling UI)
+## Gate checklist
 
-1. ~~Obtain authentic f4 image~~ — archived `6.9.3.3` full KNLT.
-2. ~~Recover SS3 HID OTA framing~~ — documented above; still need live ACK
-   timing / abort behaviour on this pad.
-3. Confirm enter path: already-DInput + usage `FFEF` vs optional SoftUpgrade
-   `05 F5 07`; never BT; prefer wired.
-4. Map whether IF2 (daemon) is the same handle as SS3’s FFEF open.
-5. Dry-run read-only enumerate + start-frame only before any full write.
-
-Until then the companion Firmware tab stays disabled.
+1. ~~Obtain authentic f4 image~~ — archived `6.9.3.3`.
+2. ~~SS3 HID OTA framing~~ — IF3 / FFEF / report 5.
+3. ~~Live same-version reflash~~ — `scripts/ota-flash.py` OK on this pad.
+4. ~~UI~~ — Firmware tab: catalog check + flash local archive (wired IF3, confirm).
