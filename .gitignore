@@ -1,7 +1,9 @@
 # Large vendor payloads / Wine prefix / installer
 vendor/
 .wine-extract/
+.wine-ss3/
 captures/*.bin
+*.zip
 captures/*.reasnap
 *.exe
 Flydigi Space Station_setup_*.exe

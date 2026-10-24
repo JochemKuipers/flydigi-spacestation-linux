@@ -64,17 +64,35 @@ Example (live): `device_code=f5` →
 `http://api-web.cdn.flydigi.com/devicefirmwares/2026/09/20/F5P_MH2113_Refactor_V7226.bin`
 (HTTPS works; COS has **no directory listing**).
 
-**Vader 4 (`f4`) is not in this catalog anymore** — same API returns
-`No firmware information found for the device`. NSS index
-(`GET /pc/nss/index`) only lists `k5, f5, f5p, f5pro, fp4`. Official path for
-Vader 4 remains **Space Station 3.x** (e.g. installer
-`…/PC/Space%20Station3.0/FlydigiSpaceStation_setup_3.4.9.5_Release.exe`), which
-likely used the same CDN host with older catalog rows that are no longer
-exposed to SS4 clients.
+**Vader 4 (`f4`) is absent from the SS4 `/pc/Update/firmware` catalog** (returns
+“No firmware information found”). NSS index only lists `k5, f5, f5p, f5pro, fp4`.
 
-So: depot exists; **f4 image URLs are not currently published** through the
-SS4 API we can call. Recovering them means SS3 traffic capture, Wayback, or
-Flydigi support — not scraping a public index.
+### Space Station 3 catalog (works for f4) (**O**)
+
+Installer:  
+`https://tencent-android.cdn.flydigi.com/PC/Space%20Station3.0/FlydigiSpaceStation_setup_3.4.9.5_Release.exe`  
+(extracted locally under `vendor/spacestation-3.4.9.5/`, gitignored).
+
+Firmware metadata:
+
+```http
+GET https://api.flydigi.com/android/v3/Firmwares/pcNew?type=f4
+```
+
+Live response (2026-10-24):
+
+| Field | Value |
+|-------|--------|
+| version | `6.9.3.3` (same as this pad’s current fw) |
+| name | `VADER4_6.9.3.3` |
+| package | `https://tencent-android.cdn.flydigi.com/firmware/F4/F4_Telink87_Gamepad_6933_1025.zip` |
+
+Unpacked image: single `F4_Telink87_Gamepad_6933_1025.bin` (158 244 B), lead
+bytes `… KNLT …` (Telink-family container — same magic as F5 RF/dongle bins).
+Saved under `vendor/firmware-f4/` (gitignored).
+
+Flash still gated until enter-ISP IF2 framing is recovered; fetching the image
+does **not** enable the Linux updater UI.
 
 ## Native helpers (**O** PE exports)
 
