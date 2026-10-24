@@ -76,7 +76,10 @@ Descriptor present (**O**). Live DInput companion traffic for this pad uses **IF
 
 ## Firmware update (**S**, gated)
 
-Tree: `firmware/` + `FirmwareConsole.exe` + ISP DLLs. Not enabled in the Linux UI until DFU framing is verified. Prefer wired.
+Tree: `firmware/` + `FirmwareConsole.exe` + ISP DLLs (`jl_*`, `WCH55x*`, CH375).
+CLI: `--device_id --chip_module --chip_type --url --vendor_id --product_id`.
+This Space Station build ships **f5** offline images only — not f4.
+Full write-up: [firmware.md](firmware.md). Linux UI stays locked.
 
 ## Mode switching
 

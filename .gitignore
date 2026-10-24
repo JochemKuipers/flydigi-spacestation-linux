@@ -2,6 +2,7 @@
 vendor/
 .wine-extract/
 captures/*.bin
+captures/*.reasnap
 *.exe
 Flydigi Space Station_setup_*.exe
 

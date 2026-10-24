@@ -12,7 +12,7 @@ Native Linux support for the Flydigi Vader 4 Pro **without** Xbox/XInput spoofin
 | Protocol (IF2 cmds + config) | Live-verified — [docs/protocol.md](docs/protocol.md) |
 | `flydigi-vader4d` (uinput + socket) | Implemented |
 | Space Station Linux GUI | Profiles / sticks / lighting / rumble (firmware gated) |
-| Firmware updater | Locked until DFU RE completes |
+| Firmware updater | Locked — architecture mapped, f4 images/ISP enter still open ([docs/firmware.md](docs/firmware.md)) |
 | Bluetooth DInput (blue) | Input working — calibrated map ([docs/bluetooth.md](docs/bluetooth.md)) |
 | Bluetooth XInput (white) | Xbox `045e:02e0` spoof — out of scope |
 
@@ -62,6 +62,7 @@ USB IF2 is exclusive to the daemon. On BT the daemon grabs `Flydigi VADER4P` so 
 - [docs/diagnosis.md](docs/diagnosis.md) — why stock Linux DInput looks broken
 - [docs/protocol.md](docs/protocol.md) — V1 report + IF2 command/config map
 - [docs/bluetooth.md](docs/bluetooth.md) — BT pairing / capture checklist
+- [docs/firmware.md](docs/firmware.md) — DFU / FirmwareConsole RE (gated)
 
 ## Space Station extract
 
