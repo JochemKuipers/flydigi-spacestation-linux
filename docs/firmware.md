@@ -48,6 +48,34 @@ F5 offline bundles shipped under `firmware/bin/controller/f5/{4.0,5.0}/`.
 **No `f4` offline images** are in this installer — Vader 4 Pro updates are
 expected to use a downloaded `--url` (CDN), not a local tree.
 
+## Online depot (**O**, 2026-10-24)
+
+| Role | URL |
+|------|-----|
+| Firmware check API | `POST https://api.flydigi.com/pc/Update/firmware` |
+| Device image CDN | `https://api-web.cdn.flydigi.com/devicefirmwares/YYYY/MM/DD/<file>.bin` |
+| Space Station installers | `https://tencent-android.cdn.flydigi.com/PC/…` |
+
+Check body (from Space Station renderer): JSON
+`{device_code, device_id, app_version, main_chip, led_chip}` plus header
+`appversion`. Success returns `data.chip_list.<chip>.{version,url,info,…}`.
+
+Example (live): `device_code=f5` →
+`http://api-web.cdn.flydigi.com/devicefirmwares/2026/09/20/F5P_MH2113_Refactor_V7226.bin`
+(HTTPS works; COS has **no directory listing**).
+
+**Vader 4 (`f4`) is not in this catalog anymore** — same API returns
+`No firmware information found for the device`. NSS index
+(`GET /pc/nss/index`) only lists `k5, f5, f5p, f5pro, fp4`. Official path for
+Vader 4 remains **Space Station 3.x** (e.g. installer
+`…/PC/Space%20Station3.0/FlydigiSpaceStation_setup_3.4.9.5_Release.exe`), which
+likely used the same CDN host with older catalog rows that are no longer
+exposed to SS4 clients.
+
+So: depot exists; **f4 image URLs are not currently published** through the
+SS4 API we can call. Recovering them means SS3 traffic capture, Wayback, or
+Flydigi support — not scraping a public index.
+
 ## Native helpers (**O** PE exports)
 
 `jl_firmware_upgrade_x64.dll`:
