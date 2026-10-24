@@ -1,0 +1,24 @@
+Device A4:C1:38:10:33:34 (public)
+	Name: Flydigi VADER4P
+	Alias: Flydigi VADER4P
+	Appearance: 0x03c2 (962)
+	Icon: input-mouse
+	Paired: yes
+	Bonded: yes
+	Trusted: yes
+	Blocked: no
+	Connected: yes
+	WakeAllowed: yes
+	LegacyPairing: no
+	CablePairing: no
+	UUID: Generic Access Profile    (00001800-0000-1000-8000-00805f9b34fb)
+	UUID: Generic Attribute Profile (00001801-0000-1000-8000-00805f9b34fb)
+	UUID: Device Information        (0000180a-0000-1000-8000-00805f9b34fb)
+	UUID: Battery Service           (0000180f-0000-1000-8000-00805f9b34fb)
+	UUID: Human Interface Device    (00001812-0000-1000-8000-00805f9b34fb)
+	UUID: Vendor specific           (00010203-0405-0607-0809-0a0b0c0d1912)
+	UUID: Nordic UART Service       (6e400001-b5a3-f393-e0a9-e50e24dcca9e)
+	Modalias: bluetooth:vD7D7p0041d0101
+	AdvertisingFlags:
+  05                                               .               
+	Battery Percentage: 0x63 (99)

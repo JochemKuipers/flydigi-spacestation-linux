@@ -1,0 +1,6 @@
+opened /dev/hidraw10
+report_id counts {}
+write 05ec0000 ok 12
+write 01000100 ok 12
+write 050fc8c8 ok 4
+--- parse report1 ---

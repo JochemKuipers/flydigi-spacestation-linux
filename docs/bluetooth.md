@@ -1,37 +1,40 @@
 # Bluetooth path
 
-## Live capture — white LED (2026-10-24)
+## DInput — blue LED (live, 2026-10-24)
+
+| Field | Value |
+|-------|-------|
+| Status LED | **Blue** |
+| Mode | **DInput** |
+| BlueZ name | `Flydigi VADER4P` |
+| Address | `A4:C1:38:10:33:34` |
+| HID ID | `0005:D7D7:0041` |
+| Modalias | `bluetooth:vD7D7p0041d0101` |
+| Kernel driver | `hid-generic` |
+| Report map | Standard HID **Game Pad** report ID `0x01` (not USB `04 FE` V1) |
+| Extra GATT | Nordic UART (`6e400001-…`), vendor `00010203-…` (config TBD) |
+| Captures | `captures/bt-dinput-blue-20261024/` |
+
+`flydigi-vader4d` treats this as transport `bt`: bridges the kernel `Flydigi VADER4P` evdev node into a clean uinput **Flydigi Vader 4 Pro** (`d7d7:0041`). USB IF2 commands (LED/config/cmd 236) are **not** on this HID collection — those stay dongle/wired until NUS/vendor GATT is reverse-engineered.
+
+M1–M4 / full IMU are likely USB-IF2-only; BT HID exposes face buttons, sticks, triggers, hat, and (via TL2/TR2) C/Z stand-ins.
+
+### Connect tips
+
+1. Rear switch → Bluetooth, hold **FN ◯ + A** until LED is **blue**.
+2. Press **HOME** to wake/advertise; `bluetoothctl connect A4:C1:38:10:33:34`.
+3. `python3 driver/flydigi_vader4d.py --list` should show `bus=bluetooth` / `d7d7:0041`.
+4. Install udev: `./scripts/install-driver.sh` (includes `d7d7:0041` hidraw access).
+
+If BlueZ shows Connected but no input events, press HOME / re-pair; HID can come up without sending reports until the pad wakes.
+
+## XInput — white LED (captured)
 
 | Field | Value |
 |-------|-------|
 | Status LED | **White** |
-| Mode | **XInput** (firmware) |
-| BlueZ name | `Xbox Wireless Controller` |
-| HID ID | `0005:045E:02E0` (Bluetooth bus) |
-| Modalias | `usb:v045Ep02E0d0903` |
-| Kernel driver | `microsoft` (`hid-microsoft`) |
-| Input node | `/dev/input/event*` — standard Xbox pad axes/buttons + FF rumble |
-| Flydigi VID/PID | **absent** — no `04b4:2412`, no `Flydigi*VADER*` hidraw |
-| Raw captures | `captures/bt-xinput-white-20261024/` |
+| Mode | **XInput** |
+| Identity | `Xbox Wireless Controller` `045e:02e0`, driver `microsoft` |
+| Captures | `captures/bt-xinput-white-20261024/` |
 
-This is the firmware’s intentional Xbox identity on BT XInput. It is **out of scope** for `flydigi-vader4d` (no Xbox spoofing / no relying on `xpad`/`hid-microsoft` as the DInput solution).
-
-## What we need next — blue LED (DInput)
-
-On the pad (rear switch on Bluetooth):
-
-1. Hold **FN ◯ + A** until the status LED turns **blue** (DInput).
-2. Re-pair / reconnect if BlueZ drops the link after the mode change.
-3. Tell the agent / re-run:
-
-   ```bash
-   python3 driver/flydigi_vader4d.py --list
-   bluetoothctl devices Connected
-   grep -A8 -iE 'Flydigi|Vader|045e|04b4' /proc/bus/input/devices
-   ```
-
-Expected (unverified): a non-Xbox HID name and possibly a different VID:PID or a classic HID gamepad collection we can bind like USB IF2.
-
-## USB / dongle reminder
-
-Dongle + wired DInput stays `04b4:2412` IF2 — already supported. BT XInput (white) will keep showing up as Xbox until you switch modes on the pad.
+Out of scope for this stack (Xbox spoof). Switch with **FN ◯ + A** for DInput.

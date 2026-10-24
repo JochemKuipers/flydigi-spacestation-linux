@@ -35,7 +35,16 @@ from flydigi.dinput_proto import (
     off_led,
     steady_led,
 )
-from flydigi.enumerate import VID, PID, find_input_interface, list_vader4_interfaces
+from flydigi.bt_evdev import BtEvdevReader, find_bt_evdev
+from flydigi.bt_hid_report import BtHidReport, parse_bt_hid_report
+from flydigi.enumerate import (
+    BT_PID,
+    BT_VID,
+    PID,
+    VID,
+    find_input_interface,
+    list_vader4_interfaces,
+)
 from flydigi.gamepad_config import decode_gamepad_config, encode_gamepad_config
 from flydigi.ipc import default_socket_path
 from flydigi.v1_report import V1Report, parse_v1_report
@@ -76,13 +85,21 @@ CAP = {
 
 
 def wait_for_device(timeout: float | None = None):
+    """Return ('usb', HidInterface) or ('bt', InputDevice)."""
     deadline = None if timeout is None else time.monotonic() + timeout
     while True:
         iface = find_input_interface()
-        if iface is not None:
-            return iface
+        if iface is not None and iface.bus != "bluetooth":
+            return ("usb", iface)
+        ev = find_bt_evdev()
+        if ev is not None:
+            return ("bt", ev)
+        # BT hidraw present but evdev not ready yet — wait
+        if iface is not None and iface.bus == "bluetooth":
+            time.sleep(0.3)
+            continue
         if deadline is not None and time.monotonic() >= deadline:
-            raise TimeoutError("Vader 4 Pro IF2 hidraw not found")
+            raise TimeoutError("Vader 4 Pro not found (USB IF2 or BT DInput)")
         time.sleep(0.5)
 
 
@@ -99,8 +116,8 @@ def _info_dict(info: DeviceInfo) -> dict[str, Any]:
     }
 
 
-def _report_dict(rep: V1Report) -> dict[str, Any]:
-    return {
+def _report_dict(rep: V1Report | BtHidReport) -> dict[str, Any]:
+    out: dict[str, Any] = {
         "event": "report",
         "lx": rep.lx,
         "ly": rep.ly,
@@ -112,9 +129,11 @@ def _report_dict(rep: V1Report) -> dict[str, Any]:
         "hat_y": rep.hat_y,
         "hat": rep.hat,
         "buttons": {k: v for k, v in rep.buttons.items() if v},
-        "accel": list(rep.accel),
-        "gyro": list(rep.gyro),
     }
+    if isinstance(rep, V1Report):
+        out["accel"] = list(rep.accel)
+        out["gyro"] = list(rep.gyro)
+    return out
 
 
 def _led_dict(cfg: LedConfig) -> dict[str, Any]:
@@ -132,7 +151,9 @@ class Daemon:
     def __init__(self, sock_path: Path) -> None:
         self.sock_path = sock_path
         self.stop = False
+        self.mode: str = "usb"  # "usb" | "bt"
         self.dev: DInputDevice | None = None
+        self.bt: BtEvdevReader | None = None
         self.ui: UInput | None = None
         self._last: dict[str, object] = {}
         self._info: DeviceInfo | None = None
@@ -144,13 +165,13 @@ class Daemon:
         self._cfg_raw: bytes | None = None
         self._led_raw: bytes | None = None
 
-    def _publish_uinput(self, report: V1Report) -> None:
+    def _publish_uinput(self, report: V1Report | BtHidReport) -> None:
         ui = self.ui
         if ui is None:
             return
         last = self._last
         for name, code in BTN_MAP.items():
-            val = 1 if report.buttons[name] else 0
+            val = 1 if report.buttons.get(name) else 0
             key = f"b:{name}"
             if last.get(key) != val:
                 ui.write(ecodes.EV_KEY, code, val)
@@ -170,7 +191,7 @@ class Daemon:
                 last[key] = value
         ui.syn()
 
-    def _broadcast_report(self, report: V1Report) -> None:
+    def _broadcast_report(self, report: V1Report | BtHidReport) -> None:
         if not self._subscribers:
             return
         line = (json.dumps(_report_dict(report)) + "\n").encode()
@@ -232,8 +253,8 @@ class Daemon:
             self._reply(c, {"ok": False, "error": str(exc)})
 
     def _require_dev(self) -> DInputDevice:
-        if self.dev is None:
-            raise RuntimeError("device not connected")
+        if self.mode != "usb" or self.dev is None:
+            raise RuntimeError("USB IF2 command path not available over BT DInput yet")
         return self.dev
 
     def _on_sideband(self, msg: object) -> None:
@@ -242,11 +263,27 @@ class Daemon:
             self._broadcast_report(msg)
 
     def _cmd_info(self) -> dict[str, Any]:
+        if self.mode == "bt":
+            return {
+                "ok": True,
+                "info": {
+                    "device_id": None,
+                    "firmware": None,
+                    "battery": None,
+                    "connection_type": "bluetooth",
+                    "transport": "bluetooth",
+                    "hid": f"{BT_VID:04x}:{BT_PID:04x}",
+                    "name": "Flydigi VADER4P",
+                    "mac": getattr(self.bt.dev, "uniq", "") if self.bt else "",
+                },
+            }
         dev = self._require_dev()
         self._info = dev.wait_device_info(timeout=2.0, on_report=self._on_sideband)
         return {"ok": True, "info": _info_dict(self._info)}
 
     def _cmd_rumble(self, msg: dict[str, Any]) -> dict[str, Any]:
+        if self.mode == "bt":
+            return {"ok": False, "error": "rumble over BT DInput not wired yet"}
         low = int(msg.get("low", 0))
         high = int(msg.get("high", 0))
         self._require_dev().rumble(low, high)
@@ -432,13 +469,45 @@ class Daemon:
                 self._handle_cmd(c, msg)
 
     def open_device(self) -> None:
-        iface = wait_for_device()
-        print(f"flydigi-vader4d: using {iface.hidraw} (iface {iface.interface_number})", flush=True)
-        if self.dev:
-            self.dev.close()
-        self.dev = DInputDevice(iface.hidraw)
+        kind, obj = wait_for_device()
+        self.mode = kind
         self._info = None
         self._last.clear()
+        if self.dev:
+            try:
+                self.dev.close()
+            except OSError:
+                pass
+            self.dev = None
+        self.bt = None
+
+        if kind == "bt":
+            from evdev import InputDevice
+
+            assert isinstance(obj, InputDevice)
+            self.bt = BtEvdevReader(obj)
+            print(
+                f"flydigi-vader4d: BT DInput {obj.path} "
+                f"({obj.name} {BT_VID:04x}:{BT_PID:04x})",
+                flush=True,
+            )
+            if self.ui is None:
+                self.ui = UInput(
+                    CAP,
+                    name="Flydigi Vader 4 Pro",
+                    vendor=BT_VID,
+                    product=BT_PID,
+                    version=0x0101,
+                    bustype=ecodes.BUS_BLUETOOTH,
+                )
+            return
+
+        iface = obj
+        print(
+            f"flydigi-vader4d: USB {iface.hidraw} (iface {iface.interface_number})",
+            flush=True,
+        )
+        self.dev = DInputDevice(iface.hidraw)
         if self.ui is None:
             self.ui = UInput(
                 CAP,
@@ -448,7 +517,6 @@ class Daemon:
                 version=0x0111,
                 bustype=ecodes.BUS_USB,
             )
-        # Best-effort identity probe (non-blocking path continues if it fails)
         try:
             self._info = self.dev.wait_device_info(timeout=1.5)
             print(
@@ -467,50 +535,76 @@ class Daemon:
         signal.signal(signal.SIGTERM, _stop)
 
         self._setup_socket()
-        print("flydigi-vader4d: waiting for 04b4:2412 interface 2…", flush=True)
+        print("flydigi-vader4d: waiting for USB IF2 or BT DInput…", flush=True)
         self.open_device()
 
         try:
             while not self.stop:
-                assert self.dev is not None and self._listen is not None
-                fds = [self.dev.fileno(), self._listen.fileno(), *[c.fileno() for c in self._clients]]
+                assert self._listen is not None
+                src_fd = None
+                if self.mode == "bt" and self.bt is not None:
+                    src_fd = self.bt.fileno()
+                elif self.dev is not None:
+                    src_fd = self.dev.fileno()
+                if src_fd is None:
+                    time.sleep(0.2)
+                    self._reconnect()
+                    continue
+                fds = [src_fd, self._listen.fileno(), *[c.fileno() for c in self._clients]]
                 try:
                     r, _, _ = select.select(fds, [], [], 1.0)
                 except (ValueError, OSError):
-                    # stale fd after disconnect
                     time.sleep(0.1)
                     continue
 
                 if self._listen.fileno() in r:
                     self._accept()
-
-                client_ready = {c for c in self._clients if c.fileno() in r}
-                if client_ready:
-                    # temporarily only service those; _service_clients reads all nonblocking
+                if any(c.fileno() in r for c in self._clients):
                     self._service_clients()
 
-                if self.dev.fileno() in r:
-                    try:
-                        data = os.read(self.dev.fileno(), 64)
-                    except BlockingIOError:
-                        continue
-                    except OSError as exc:
-                        print(f"flydigi-vader4d: read error {exc}, reconnecting…", flush=True)
-                        self._reconnect()
-                        continue
-                    msg = self.dev._dispatch(data)
-                    if isinstance(msg, V1Report):
-                        self._publish_uinput(msg)
-                        self._broadcast_report(msg)
-                    elif isinstance(msg, DeviceInfo):
-                        self._info = msg
-                    elif isinstance(msg, tuple) and msg[0] == "config":
-                        self._cfg_raw = msg[1]
-                    elif isinstance(msg, tuple) and msg[0] == "led":
-                        self._led_raw = msg[1]
+                if src_fd in r:
+                    if self.mode == "bt" and self.bt is not None:
+                        try:
+                            rep = self.bt.pump()
+                        except OSError as exc:
+                            print(f"flydigi-vader4d: BT read error {exc}, reconnecting…", flush=True)
+                            self._reconnect()
+                            continue
+                        if rep is not None:
+                            self._publish_uinput(rep)
+                            self._broadcast_report(rep)
+                    elif self.dev is not None:
+                        try:
+                            data = os.read(self.dev.fileno(), 64)
+                        except BlockingIOError:
+                            continue
+                        except OSError as exc:
+                            print(f"flydigi-vader4d: read error {exc}, reconnecting…", flush=True)
+                            self._reconnect()
+                            continue
+                        # USB V1 or (rare) BT hidraw fallback
+                        bt_rep = parse_bt_hid_report(data)
+                        if bt_rep is not None:
+                            self._publish_uinput(bt_rep)
+                            self._broadcast_report(bt_rep)
+                            continue
+                        msg = self.dev._dispatch(data)
+                        if isinstance(msg, V1Report):
+                            self._publish_uinput(msg)
+                            self._broadcast_report(msg)
+                        elif isinstance(msg, DeviceInfo):
+                            self._info = msg
+                        elif isinstance(msg, tuple) and msg[0] == "config":
+                            self._cfg_raw = msg[1]
+                        elif isinstance(msg, tuple) and msg[0] == "led":
+                            self._led_raw = msg[1]
                 elif not r:
-                    # idle: check hot-unplug
-                    if self.dev and not self.dev.path.exists():
+                    gone = False
+                    if self.mode == "bt" and self.bt is not None:
+                        gone = not Path(self.bt.dev.path).exists()
+                    elif self.dev is not None:
+                        gone = not self.dev.path.exists()
+                    if gone:
                         print("flydigi-vader4d: device gone, waiting…", flush=True)
                         self._reconnect()
         finally:
@@ -524,6 +618,13 @@ class Daemon:
             except OSError:
                 pass
             self.dev = None
+        self.bt = None
+        if self.ui:
+            try:
+                self.ui.close()
+            except OSError:
+                pass
+            self.ui = None
         self.open_device()
 
     def _cleanup(self) -> None:
@@ -545,6 +646,7 @@ class Daemon:
         if self.dev:
             self.dev.close()
             self.dev = None
+        self.bt = None
 
 
 def KEY_NAMES_SAFE(map_id: int) -> str:

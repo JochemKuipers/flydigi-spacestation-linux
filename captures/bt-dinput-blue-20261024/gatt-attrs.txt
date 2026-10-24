@@ -1,0 +1,80 @@
+Waiting to connect to bluetoothd...[0;94m[bluetoothctl]> [0m        [0;94m[Flydigi VADER4P]> [0m                                                                               [[0;92mNEW[0m] Media /org/bluez/hci0 
+[0;94m[Flydigi VADER4P]> [0m                                                                               	SupportedUUIDs: 0000110a-0000-1000-8000-00805f9b34fb
+[0;94m[Flydigi VADER4P]> [0m                                                                               	SupportedUUIDs: 0000110b-0000-1000-8000-00805f9b34fb
+[0;94m[Flydigi VADER4P]> [0m                                                                               Agent registered
+[0;94m[Flydigi VADER4P]> [0mconnect A4:C1:38:10:33:34
+Attempting to connect to A4:C1:38:10:33:34
+[0;94m[Flydigi VADER4P]> [0mmenu gatt
+[1;39mMenu gatt:[0m
+[1;39mAvailable commands:[0m
+[1;39m-------------------[0m
+[1;39mlist-attributes [dev/local]                       [0mList attributes
+[1;39mselect-attribute <attribute/UUID/local> [attribute/UUID] [0mSelect attribute
+[1;39mattribute-info [attribute/UUID]                   [0mSelect attribute
+[1;39mread [offset]                                     [0mRead attribute value
+[1;39mwrite <data=xx xx ...> [offset] [type]            [0mWrite attribute value
+[1;39macquire-write                                     [0mAcquire Write file descriptor
+[1;39mrelease-write                                     [0mRelease Write file descriptor
+[1;39macquire-notify                                    [0mAcquire Notify file descriptor
+[1;39mrelease-notify                                    [0mRelease Notify file descriptor
+[1;39mnotify <on/off>                                   [0mNotify attribute value
+[1;39mclone [dev/attribute/UUID]                        [0mClone a device or attribute
+[1;39mregister-application [UUID ...]                   [0mRegister profile to connect
+[1;39munregister-application                            [0mUnregister profile
+[1;39mregister-service <UUID> [handle]                  [0mRegister application service.
+[1;39munregister-service <UUID/object>                  [0mUnregister application service
+[1;39mregister-includes <UUID> [handle]                 [0mRegister as Included service in.
+[1;39munregister-includes <Service-UUID> <Inc-UUID>     [0mUnregister Included service.
+[1;39mregister-characteristic <UUID> <Flags=read,write,notify...> [handle] [0mRegister application characteristic
+[1;39munregister-characteristic <UUID/object>           [0mUnregister application characteristic
+[1;39mregister-descriptor <UUID> <Flags=read,write...> [handle] [0mRegister application descriptor
+[1;39munregister-descriptor <UUID/object>               [0mUnregister application descriptor
+[1;39mback                                              [0mReturn to main menu
+[1;39mversion                                           [0mDisplay version
+[1;39mquit                                              [0mQuit program
+[1;39mexit                                              [0mQuit program
+[1;39mhelp                                              [0mDisplay help about this program
+[1;39mexport                                            [0mPrint environment variables
+[1;39mscript <filename>                                 [0mRun script
+[0;94m[Flydigi VADER4P]> [0mlist-attributes A4:C1:38:10:33:34
+Primary Service (Handle 0x002f)
+	/org/bluez/hci0/dev_A4_C1_38_10_33_34/service002f
+	0000180f-0000-1000-8000-00805f9b34fb
+	Battery Service
+Characteristic (Handle 0x0030)
+	/org/bluez/hci0/dev_A4_C1_38_10_33_34/service002f/char0030
+	00002a19-0000-1000-8000-00805f9b34fb
+	Battery Level
+Descriptor (Handle 0x0032)
+	/org/bluez/hci0/dev_A4_C1_38_10_33_34/service002f/char0030/desc0032
+	00002902-0000-1000-8000-00805f9b34fb
+	Client Characteristic Configuration
+Primary Service (Handle 0x002a)
+	/org/bluez/hci0/dev_A4_C1_38_10_33_34/service002a
+	00010203-0405-0607-0809-0a0b0c0d1912
+	Vendor specific
+Characteristic (Handle 0x002b)
+	/org/bluez/hci0/dev_A4_C1_38_10_33_34/service002a/char002b
+	00010203-0405-0607-0809-0a0b0c0d2b12
+	Vendor specific
+Descriptor (Handle 0x002e)
+	/org/bluez/hci0/dev_A4_C1_38_10_33_34/service002a/char002b/desc002e
+	00002901-0000-1000-8000-00805f9b34fb
+	Characteristic User Description
+Descriptor (Handle 0x002d)
+	/org/bluez/hci0/dev_A4_C1_38_10_33_34/service002a/char002b/desc002d
+	00002902-0000-1000-8000-00805f9b34fb
+	Client Characteristic Configuration
+Primary Service (Handle 0x0022)
+	/org/bluez/hci0/dev_A4_C1_38_10_33_34/service0022
+	6e400001-b5a3-f393-e0a9-e50e24dcca9e
+	Nordic UART Service
+Characteristic (Handle 0x0026)
+	/org/bluez/hci0/dev_A4_C1_38_10_33_34/service0022/char0026
+	6e400003-b5a3-f393-e0a9-e50e24dcca9e
+	Nordic UART RX
+Descriptor (Handle 0x0029)
+	/org/bluez/hci0/dev_A4_C1_38_10_33_34/service0022/char0026/desc0029
+	00002902-0000-1000-8000-00805f9b34fb
+	Client Characteristic Configuration
+Descriptor (Handle 0x0028)

@@ -1,0 +1,16 @@
+B: KEY=f 0 0 0 0 0 0 7cff000000000000 0 0 0 0
+B: ABS=3003f
+B: FF=0
+
+I: Bus=0005 Vendor=d7d7 Product=0041 Version=0101
+N: Name="Flydigi VADER4P"
+P: Phys=70:1a:b8:2b:26:71
+S: Sysfs=/devices/virtual/misc/uhid/0005:D7D7:0041.003B/input/input88
+U: Uniq=a4:c1:38:10:33:34
+H: Handlers=kbd event23 js0 
+B: PROP=0
+B: EV=1b
+B: KEY=c4000 200040000000000 6fdb000000000001 2000000100000 200400000 0 10000000
+B: ABS=10000030627
+B: MSC=10
+

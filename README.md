@@ -13,7 +13,8 @@ Native Linux support for the Flydigi Vader 4 Pro **without** Xbox/XInput spoofin
 | `flydigi-vader4d` (uinput + socket) | Implemented |
 | Space Station Linux GUI | Profiles / sticks / lighting / rumble (firmware gated) |
 | Firmware updater | Locked until DFU RE completes |
-| Bluetooth | Stubbed — needs live pair capture ([docs/bluetooth.md](docs/bluetooth.md)) |
+| Bluetooth DInput (blue) | `d7d7:0041` VADER4P — evdev bridge in daemon ([docs/bluetooth.md](docs/bluetooth.md)) |
+| Bluetooth XInput (white) | Xbox `045e:02e0` spoof — out of scope |
 
 ## Requirements
 

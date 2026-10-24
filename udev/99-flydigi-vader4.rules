@@ -1,8 +1,12 @@
-# Flydigi Vader 4 Pro (wired / 2.4G DInput composite 04b4:2412)
-# Grant seat access to hidraw so flydigi-vader4d and the companion app can open IF2/IF3.
+# Flydigi Vader 4 Pro — USB / 2.4G DInput composite 04b4:2412
 KERNEL=="hidraw*", ATTRS{idVendor}=="04b4", ATTRS{idProduct}=="2412", MODE="0660", TAG+="uaccess", GROUP="input"
 
-# Hide the incomplete IF0 joystick and IF1 mouse from libinput / generic game stacks.
-# The daemon publishes the full DInput device via uinput instead.
+# Hide incomplete USB IF0 joystick / IF1 mouse; daemon publishes full pad via uinput.
 SUBSYSTEM=="input", ATTRS{idVendor}=="04b4", ATTRS{idProduct}=="2412", ENV{ID_INPUT_JOYSTICK}=="1", ENV{LIBINPUT_IGNORE_DEVICE}="1"
 SUBSYSTEM=="input", ATTRS{idVendor}=="04b4", ATTRS{idProduct}=="2412", ENV{ID_INPUT_MOUSE}=="1", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+
+# Bluetooth DInput (blue LED) — Flydigi VADER4P  d7d7:0041
+KERNEL=="hidraw*", ATTRS{idVendor}=="d7d7", ATTRS{idProduct}=="0041", MODE="0660", TAG+="uaccess", GROUP="input"
+# Prefer our uinput republish over the raw hid-generic node (consumer-key noise).
+SUBSYSTEM=="input", ATTRS{idVendor}=="d7d7", ATTRS{idProduct}=="0041", ENV{ID_INPUT_JOYSTICK}=="1", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+SUBSYSTEM=="input", ATTRS{idVendor}=="d7d7", ATTRS{idProduct}=="0041", ENV{ID_INPUT_KEY}=="1", ENV{LIBINPUT_IGNORE_DEVICE}="1"

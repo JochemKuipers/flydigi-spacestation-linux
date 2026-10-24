@@ -8,10 +8,10 @@ from pathlib import Path
 VID = 0x04B4
 PID = 0x2412  # wired + 2.4G dongle DInput composite
 
-# Additional (vid, pid) pairs to probe. Bluetooth DInput identity is unverified
-# on this pad; when paired, BlueZ usually exposes hidraw with HID_NAME containing
-# "Flydigi" — see list_vader4_interfaces(match_name=True).
-EXTRA_IDS: tuple[tuple[int, int], ...] = ()
+# Bluetooth DInput (blue LED): live-captured 2026-10-24 as Flydigi VADER4P
+BT_VID = 0xD7D7
+BT_PID = 0x0041
+EXTRA_IDS: tuple[tuple[int, int], ...] = ((BT_VID, BT_PID),)
 
 
 @dataclass(frozen=True)
@@ -43,11 +43,19 @@ def _iface_number(device: Path) -> int:
     return -1
 
 
-def _bus_from_phys(phys: str) -> str:
+def _bus_from_uevent(uevent: str, phys: str) -> str:
+    # HID_ID=0005:… is Bluetooth (BUS_BLUETOOTH); 0003 = USB
+    for line in uevent.splitlines():
+        if line.startswith("HID_ID="):
+            bus_n = line.split("=", 1)[1].split(":")[0]
+            if bus_n == "0005":
+                return "bluetooth"
+            if bus_n == "0003":
+                return "usb"
     p = phys.lower()
     if p.startswith("usb-") or "/usb" in p:
         return "usb"
-    if "bluetooth" in p or p.startswith("00:") or "bluez" in p:
+    if "bluetooth" in p or "bluez" in p:
         return "bluetooth"
     return "other"
 
@@ -98,22 +106,26 @@ def list_vader4_interfaces(
                 interface_number=_iface_number(device),
                 phys=phys,
                 name=name,
-                bus=_bus_from_phys(phys),
+                bus=_bus_from_uevent(uevent, phys),
             )
         )
     return out
 
 
 def find_input_interface(vid: int = VID, pid: int = PID) -> HidInterface | None:
-    """Prefer USB interface 2 (extended DInput + IMU)."""
+    """Prefer USB interface 2 (extended DInput + IMU); else BT DInput hidraw."""
     ifaces = list_vader4_interfaces(vid, pid)
     for i in ifaces:
         if i.interface_number == 2 or i.phys.endswith("/input2"):
             return i
-    # Bluetooth often exposes a single aggregated hidraw (layout TBD).
     bt = [i for i in ifaces if i.bus == "bluetooth"]
     if len(bt) == 1:
         return bt[0]
+    if len(bt) > 1:
+        return bt[0]
+    # Name-matched single node without classified bus
+    if len(ifaces) == 1 and "VADER" in ifaces[0].name.upper():
+        return ifaces[0]
     return None
 
 
