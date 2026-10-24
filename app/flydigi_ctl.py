@@ -25,6 +25,12 @@ def main() -> int:
     rumble = sub.add_parser("rumble")
     rumble.add_argument("low", type=int)
     rumble.add_argument("high", type=int)
+    rumble.add_argument(
+        "--ms",
+        type=int,
+        default=1500,
+        help="how long to keep refreshing rumble packets (0 = one shot / stop)",
+    )
     sub.add_parser("led-get")
     led = sub.add_parser("led-set")
     led.add_argument("--mode", type=int, default=5, help="0=off 1=stream 2=breath 5=steady")
@@ -47,7 +53,17 @@ def main() -> int:
             elif args.cmd == "info":
                 print(json.dumps(c.request("info"), indent=2))
             elif args.cmd == "rumble":
-                print(json.dumps(c.request("rumble", low=args.low, high=args.high), indent=2))
+                print(
+                    json.dumps(
+                        c.request(
+                            "rumble",
+                            low=args.low,
+                            high=args.high,
+                            duration_ms=args.ms,
+                        ),
+                        indent=2,
+                    )
+                )
             elif args.cmd == "led-get":
                 print(json.dumps(c.request("led_get"), indent=2))
             elif args.cmd == "led-set":

@@ -36,7 +36,7 @@ Responses are non-`04 FE` packets; many put the echoed command ID in byte `[15]`
 
 | Cmd | Name | Notes |
 |-----|------|-------|
-| `0x0F` (15) | Haptic / rumble | `[5, 0x0F, lo, hi]` — **O** motors respond |
+| `0x0F` (15) | Haptic / rumble | OUT report 5, 32 B: `[5, 0x0F, lo, hi, 0…]` (SDL V1 high-bytes). Motors need ~25 ms refresh while active — one-shot feels dead (**O**) |
 | 17 | Dongle version | response `[4, 17, FW_L, FW_H]` (**C**) |
 | 229 | Read LED config | parcels; byte `[15]==229`, chunk idx in `[3]`, 10 data bytes `[5:15]`; **49** chunks (**C**/**O**) |
 | 231 | Write LED start | followed by inner parcels cmd **51** (**C**) |

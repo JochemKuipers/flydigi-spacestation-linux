@@ -325,10 +325,12 @@ class MainWindow(QMainWindow):
         form.addRow("High motor", self.rumble_hi)
         layout.addLayout(form)
         row = QHBoxLayout()
-        test = QPushButton("Test (0.4s)")
+        test = QPushButton("Test (1.5s)")
         test.clicked.connect(self._rumble_test)
         stop = QPushButton("Stop")
-        stop.clicked.connect(lambda: self._rpc("rumble", low=0, high=0))
+        stop.clicked.connect(
+            lambda: self._rpc("rumble", low=0, high=0, duration_ms=0)
+        )
         row.addWidget(test)
         row.addWidget(stop)
         row.addStretch()
@@ -600,7 +602,12 @@ class MainWindow(QMainWindow):
     def _rumble_test(self) -> None:
         if not self._require_usb_config():
             return
-        self._rpc("rumble", low=self.rumble_lo.value(), high=self.rumble_hi.value())
+        self._rpc(
+            "rumble",
+            low=self.rumble_lo.value(),
+            high=self.rumble_hi.value(),
+            duration_ms=1500,
+        )
         from PySide6.QtCore import QTimer
 
         QTimer.singleShot(400, lambda: self._rpc("rumble", low=0, high=0))

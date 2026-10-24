@@ -229,10 +229,19 @@ class DInputDevice:
         self.write_raw(bytes(buf))
 
     def rumble(self, low: int, high: int) -> None:
-        # SDL V1: report 5, cmd 0x0F, intensities in high bytes of u16
-        lo = max(0, min(255, low))
-        hi = max(0, min(255, high))
-        self.write_raw(bytes((5, CMD_HAPTIC, lo, hi)))
+        """V1 haptic on OUT report 5 (HID report count 31 → write 32 bytes).
+
+        SDL packs Uint16 rumble as high bytes into [2]/[3]; motors need the
+        packet refreshed ~every 20–50 ms while active (one-shot feels dead).
+        """
+        lo = max(0, min(255, int(low)))
+        hi = max(0, min(255, int(high)))
+        buf = bytearray(32)
+        buf[0] = 5
+        buf[1] = CMD_HAPTIC
+        buf[2] = lo
+        buf[3] = hi
+        self.write_raw(bytes(buf))
 
     def request_device_info(self) -> None:
         self._device_info = None

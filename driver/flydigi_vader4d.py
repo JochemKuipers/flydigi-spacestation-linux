@@ -166,6 +166,10 @@ class Daemon:
         self._listen: socket.socket | None = None
         self._cfg_raw: bytes | None = None
         self._led_raw: bytes | None = None
+        self._rumble_lo = 0
+        self._rumble_hi = 0
+        self._rumble_until = 0.0
+        self._rumble_last = 0.0
 
     def _publish_uinput(self, report: V1Report | BtHidReport) -> None:
         ui = self.ui
@@ -291,10 +295,52 @@ class Daemon:
                 "ok": False,
                 "error": "rumble needs dongle or USB — BT DInput is input-only",
             }
-        low = int(msg.get("low", 0))
-        high = int(msg.get("high", 0))
-        self._require_dev().rumble(low, high)
-        return {"ok": True}
+        self._require_dev()
+        low = max(0, min(255, int(msg.get("low", 0))))
+        high = max(0, min(255, int(msg.get("high", 0))))
+        # duration_ms: 0 = single refresh / stop; default 1500 so a manual
+        # test is actually felt (motors need continuous OUT report refresh).
+        if "duration_ms" in msg:
+            duration_ms = max(0, int(msg["duration_ms"]))
+        elif low == 0 and high == 0:
+            duration_ms = 0
+        else:
+            duration_ms = 1500
+        now = time.monotonic()
+        self._rumble_lo = low
+        self._rumble_hi = high
+        if low == 0 and high == 0:
+            self._rumble_until = 0.0
+            self.dev.rumble(0, 0)  # type: ignore[union-attr]
+        else:
+            self._rumble_until = now + duration_ms / 1000.0
+            self._rumble_last = 0.0
+            self._pump_rumble(force=True)
+        return {"ok": True, "low": low, "high": high, "duration_ms": duration_ms}
+
+    def _pump_rumble(self, force: bool = False) -> None:
+        if self.mode != "usb" or self.dev is None:
+            return
+        now = time.monotonic()
+        if self._rumble_until <= 0:
+            return
+        if now >= self._rumble_until:
+            self._rumble_until = 0.0
+            self._rumble_lo = 0
+            self._rumble_hi = 0
+            try:
+                self.dev.rumble(0, 0)
+            except OSError:
+                pass
+            return
+        if not force and (now - self._rumble_last) < 0.025:
+            return
+        try:
+            self.dev.rumble(self._rumble_lo, self._rumble_hi)
+            self._rumble_last = now
+        except OSError as exc:
+            print(f"flydigi-vader4d: rumble write failed: {exc}", flush=True)
+            self._rumble_until = 0.0
 
     def _cmd_led_get(self) -> dict[str, Any]:
         dev = self._require_dev()
@@ -562,11 +608,14 @@ class Daemon:
                     self._reconnect()
                     continue
                 fds = [*src_fds, self._listen.fileno(), *[c.fileno() for c in self._clients]]
+                timeout = 0.025 if self._rumble_until > time.monotonic() else 1.0
                 try:
-                    r, _, _ = select.select(fds, [], [], 1.0)
+                    r, _, _ = select.select(fds, [], [], timeout)
                 except (ValueError, OSError):
                     time.sleep(0.1)
                     continue
+
+                self._pump_rumble()
 
                 if self._listen.fileno() in r:
                     self._accept()
