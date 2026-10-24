@@ -1,0 +1,273 @@
+=== date ===
+2026-10-24T21:10:37+02:00
+=== lsusb flydigi ===
+Couldn't open device, some information will be missing
+
+Bus 001 Device 015: ID 04b4:2412 Cypress Semiconductor Corp. Flydigi VADER4
+Negotiated speed: Full Speed (12Mbps)
+Device Descriptor:
+  bLength                18
+  bDescriptorType         1
+  bcdUSB               2.00
+  bDeviceClass            0 [unknown]
+  bDeviceSubClass         0 [unknown]
+  bDeviceProtocol         0 
+  bMaxPacketSize0         8
+  idVendor           0x04b4 Cypress Semiconductor Corp.
+  idProduct          0x2412 Flydigi VADER4
+  bcdDevice            1.00
+  iManufacturer           1 Flydigi
+  iProduct                2 Flydigi VADER4
+  iSerial                 0 
+  bNumConfigurations      1
+  Configuration Descriptor:
+    bLength                 9
+    bDescriptorType         2
+    wTotalLength       0x0074
+    bNumInterfaces          4
+    bConfigurationValue     1
+    iConfiguration          0 
+    bmAttributes         0xa0
+      (Bus Powered)
+      Remote Wakeup
+    MaxPower              100mA
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        0
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         3 Human Interface Device
+      bInterfaceSubClass      0 [unknown]
+      bInterfaceProtocol      0 
+      iInterface              0 
+        HID Device Descriptor:
+          bLength                 9
+          bDescriptorType        33
+          bcdHID               1.11
+          bCountryCode            0 Not supported
+          bNumDescriptors         1
+          bDescriptorType        34 Report
+          wDescriptorLength     125
+          Report Descriptors: 
+            ** UNAVAILABLE **
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x81  EP 1 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               2
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        1
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         3 Human Interface Device
+      bInterfaceSubClass      1 Boot Interface Subclass
+      bInterfaceProtocol      2 Mouse
+      iInterface              0 
+        HID Device Descriptor:
+          bLength                 9
+          bDescriptorType        33
+          bcdHID               1.11
+          bCountryCode            0 Not supported
+          bNumDescriptors         1
+          bDescriptorType        34 Report
+          wDescriptorLength      70
+          Report Descriptors: 
+            ** UNAVAILABLE **
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x82  EP 2 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               2
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        2
+      bAlternateSetting       0
+      bNumEndpoints           2
+      bInterfaceClass         3 Human Interface Device
+      bInterfaceSubClass      0 [unknown]
+      bInterfaceProtocol      0 
+      iInterface              0 
+        HID Device Descriptor:
+          bLength                 9
+          bDescriptorType        33
+          bcdHID               1.11
+          bCountryCode            0 Not supported
+          bNumDescriptors         1
+          bDescriptorType        34 Report
+          wDescriptorLength      44
+          Report Descriptors: 
+            ** UNAVAILABLE **
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x83  EP 3 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               1
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x05  EP 5 OUT
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               2
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        3
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         3 Human Interface Device
+      bInterfaceSubClass      0 [unknown]
+      bInterfaceProtocol      0 
+      iInterface              0 
+        HID Device Descriptor:
+          bLength                 9
+          bDescriptorType        33
+          bcdHID               1.11
+          bCountryCode            0 Not supported
+          bNumDescriptors         1
+          bDescriptorType        34 Report
+          wDescriptorLength      31
+          Report Descriptors: 
+            ** UNAVAILABLE **
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x84  EP 4 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               1
+=== dmesg ===
+=== hid ===
+== /sys/bus/hid/devices/0003:04B4:2412.0035
+DRIVER=hid-generic
+HID_ID=0003:000004B4:00002412
+HID_NAME=Flydigi Flydigi VADER4
+HID_PHYS=usb-0000:10:00.0-1.4/input0
+HID_UNIQ=
+MODALIAS=hid:b0003g0001v000004B4p00002412
+driver: hid-generic
+00000000: 0501 0905 a101 7508 9504 1500 26ff 0035  ......u.....&..5
+00000010: 0046 ff00 0930 0931 0932 0935 8102 7504  .F...0.1.2.5..u.
+00000020: 9501 2507 463b 0165 1409 3981 4265 0025  ..%.F;.e..9.Be.%
+00000030: 0145 0105 0c09 6975 0195 0181 0205 0909  .E....iu........
+00000040: 1409 1309 1209 1109 1009 0f09 0e09 0c09  ................
+00000050: 0b09 0a09 0909 0809 0709 0609 0509 0409  ................
+00000060: 0309 0209 0175 0195 1381 0205 0215 0026  .....u.........&
+00000070: ff00 09c5 09c4 9502 7508 8102 c0         ........u....
+== /sys/bus/hid/devices/0003:04B4:2412.0036
+DRIVER=hid-generic
+HID_ID=0003:000004B4:00002412
+HID_NAME=Flydigi Flydigi VADER4
+HID_PHYS=usb-0000:10:00.0-1.4/input1
+HID_UNIQ=
+MODALIAS=hid:b0003g0001v000004B4p00002412
+driver: hid-generic
+00000000: 0501 0902 a101 8502 0901 a100 0509 1901  ................
+00000010: 2905 1500 2501 9505 7501 8102 9501 7503  )...%...u.....u.
+00000020: 8101 0501 0930 0931 1601 f826 ff07 750c  .....0.1...&..u.
+00000030: 9502 8106 0938 1581 257f 7508 9501 8106  .....8..%.u.....
+00000040: 9501 8103 c0c0                           ......
+== /sys/bus/hid/devices/0003:04B4:2412.0037
+DRIVER=hid-generic
+HID_ID=0003:000004B4:00002412
+HID_NAME=Flydigi Flydigi VADER4
+HID_PHYS=usb-0000:10:00.0-1.4/input2
+HID_UNIQ=
+MODALIAS=hid:b0003g0001v000004B4p00002412
+driver: hid-generic
+00000000: 06a0 ff09 01a1 0109 0385 0415 8025 7f35  .............%.5
+00000010: 0045 ff75 0895 1f81 0209 0585 0515 8025  .E.u...........%
+00000020: 7f35 0045 ff75 0895 1f91 02c0            .5.E.u......
+== /sys/bus/hid/devices/0003:04B4:2412.0038
+DRIVER=hid-generic
+HID_ID=0003:000004B4:00002412
+HID_NAME=Flydigi Flydigi VADER4
+HID_PHYS=usb-0000:10:00.0-1.4/input3
+HID_UNIQ=
+MODALIAS=hid:b0003g0001v000004B4p00002412
+driver: hid-generic
+00000000: 06ee ff09 00a1 0185 0515 0026 ff00 953f  ...........&...?
+00000010: 7508 0901 8102 0902 9102 0903 b102 c0    u..............
+=== input ===
+I: Bus=0003 Vendor=04b4 Product=2412 Version=0111
+N: Name="Flydigi Flydigi VADER4"
+P: Phys=usb-0000:10:00.0-1.4/input0
+S: Sysfs=/devices/pci0000:00/0000:00:02.1/0000:05:00.0/0000:06:0c.0/0000:10:00.0/usb1/1-1/1-1.4/1-1.4:1.0/0003:04B4:2412.0035/input/input80
+U: Uniq=
+H: Handlers=event23 js0 
+B: PROP=0
+B: EV=1b
+B: KEY=f 0 0 0 0 4000 0 efff000000000000 0 0 0 0
+B: ABS=30627
+B: MSC=10
+
+I: Bus=0003 Vendor=04b4 Product=2412 Version=0111
+N: Name="Flydigi Flydigi VADER4"
+P: Phys=usb-0000:10:00.0-1.4/input1
+S: Sysfs=/devices/pci0000:00/0000:00:02.1/0000:05:00.0/0000:06:0c.0/0000:10:00.0/usb1/1-1/1-1.4/1-1.4:1.1/0003:04B4:2412.0036/input/input81
+U: Uniq=
+H: Handlers=event24 mouse3 
+B: PROP=0
+B: EV=17
+B: KEY=1f0000 0 0 0 0
+B: REL=903
+B: MSC=10
+
+=== hidraw ===
+---- hidraw10
+DRIVER=hid-generic
+HID_ID=0003:000004B4:00002412
+HID_NAME=Flydigi Flydigi VADER4
+HID_PHYS=usb-0000:10:00.0-1.4/input0
+HID_UNIQ=
+MODALIAS=hid:b0003g0001v000004B4p00002412
+"/dev/hidraw10": No such file or directory (os error 2)
+---- hidraw11
+DRIVER=hid-generic
+HID_ID=0003:000004B4:00002412
+HID_NAME=Flydigi Flydigi VADER4
+HID_PHYS=usb-0000:10:00.0-1.4/input1
+HID_UNIQ=
+MODALIAS=hid:b0003g0001v000004B4p00002412
+"/dev/hidraw11": No such file or directory (os error 2)
+---- hidraw12
+DRIVER=hid-generic
+HID_ID=0003:000004B4:00002412
+HID_NAME=Flydigi Flydigi VADER4
+HID_PHYS=usb-0000:10:00.0-1.4/input2
+HID_UNIQ=
+MODALIAS=hid:b0003g0001v000004B4p00002412
+"/dev/hidraw12": No such file or directory (os error 2)
+---- hidraw13
+DRIVER=hid-generic
+HID_ID=0003:000004B4:00002412
+HID_NAME=Flydigi Flydigi VADER4
+HID_PHYS=usb-0000:10:00.0-1.4/input3
+HID_UNIQ=
+MODALIAS=hid:b0003g0001v000004B4p00002412
+"/dev/hidraw13": No such file or directory (os error 2)

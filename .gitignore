@@ -1,0 +1,24 @@
+# Large vendor payloads / Wine prefix / installer
+vendor/
+.wine-extract/
+captures/*.bin
+*.exe
+Flydigi Space Station_setup_*.exe
+
+# Keep docs and small capture text / descriptors
+!captures/*.txt
+!captures/report-descriptors/
+!captures/report-descriptors/**
+
+# Node / Python
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/

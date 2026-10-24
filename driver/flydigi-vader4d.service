@@ -1,0 +1,15 @@
+[Unit]
+Description=Flydigi Vader 4 Pro DInput userspace driver
+After=systemd-udevd.service
+Wants=systemd-udevd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/Projects/flydigi-spacestation-linux/driver/flydigi_vader4d.py
+Restart=on-failure
+RestartSec=2
+# Needs access to /dev/uinput and hidraw (via udev TAG+=uaccess or input group)
+SupplementaryGroups=input
+
+[Install]
+WantedBy=default.target

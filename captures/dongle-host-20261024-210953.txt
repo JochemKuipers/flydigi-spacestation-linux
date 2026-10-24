@@ -1,0 +1,41 @@
+=== date ===
+2026-10-24T21:09:53+02:00
+=== uname ===
+Linux pc-jochem 7.3.0-5-cachyos #1 SMP PREEMPT_DYNAMIC Fri, 23 Oct 2026 14:38:02 +0000 x86_64 GNU/Linux
+=== lsusb ===
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 001 Device 002: ID 05e3:0610 Genesys Logic, Inc. Hub
+Bus 001 Device 003: ID 0bda:4032 Realtek Semiconductor Corp. USB Audio
+Bus 001 Device 005: ID 17ef:4839 Lenovo Lenovo Performance Camera
+Bus 001 Device 006: ID 8087:0032 Intel Corp. AX210 Bluetooth
+Bus 001 Device 007: ID 048d:5702 Integrated Technology Express, Inc. RGB LED Controller
+Bus 001 Device 012: ID 062a:38b3 MosArt Semiconductor Corp. USB 2.4G Keyboard
+Bus 002 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+Bus 002 Device 002: ID 05e3:0625 Genesys Logic, Inc. USB3.2 Hub
+Bus 003 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 004 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+Bus 005 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 005 Device 002: ID 25a7:fa07 Areson Technology Corp 2.4G Wireless Receiver
+Bus 006 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+Bus 007 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 007 Device 002: ID 05e3:0608 Genesys Logic, Inc. Hub
+Bus 007 Device 003: ID 0c45:5204 Microdia USB DEVICE
+Bus 007 Device 005: ID 145f:0254 Trust Trust GXT 232 Microphone
+Bus 007 Device 008: ID 25a7:fa61 Areson Technology Corp Elecom Co., Ltd MR-K013 Multicard Reader
+=== lsusb -d 04b4:2412 -v ===
+=== dmesg ===
+=== input devices ===
+=== hidraw ===
+=== report descriptors ===
+== /sys/bus/hid/devices/*04B4*
+driver: 
+=== bluetooth ===
+dbus[148258]: arguments to dbus_connection_get_object_path_data() were incorrect, assertion "connection != NULL" failed in file ../dbus/dbus/dbus-connection.c line 5974.
+This is normally a bug in some application using the D-Bus library.
+
+  D-Bus not built with -rdynamic so unable to print a backtrace
+--: line 24: 148258 Aborted                    (core dumped) bluetoothctl devices 2>&1
+dbus[148268]: arguments to dbus_connection_get_object_path_data() were incorrect, assertion "connection != NULL" failed in file ../dbus/dbus/dbus-connection.c line 5974.
+This is normally a bug in some application using the D-Bus library.
+
+  D-Bus not built with -rdynamic so unable to print a backtrace
