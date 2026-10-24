@@ -56,7 +56,7 @@ def load_device_config() -> dict[str, Any]:
         }
     data = json.loads(path.read_text(encoding="utf-8"))
     if "led_path" not in data:
-        # Approximate V in viewBox space (from community pad_layout scaled 1000×708 → 508×421)
+        # Approximate V in SS4 wireframe viewBox space
         data["led_path"] = [
             [193.0, 46.0],
             [255.0, 103.0],

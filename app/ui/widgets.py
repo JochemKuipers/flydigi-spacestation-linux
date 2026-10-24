@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPixmap, QPolygonF
+from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QLabel, QWidget
 
 from flydigi.dinput_proto import build_led
@@ -29,42 +29,36 @@ _ASSETS = Path(__file__).resolve().parent / "assets"
 _SS4 = assets_dir()
 
 
-def logo_pixmap(height: int = 36, led: QColor | None = None) -> QPixmap:
-    """Title-bar glyph from the SS4 F4 product art."""
-    src = QPixmap(str(_SS4 / "default_product_f4.png"))
-    if src.isNull():
-        src = QPixmap(str(_ASSETS / "vader4_front.png"))
-    if src.isNull():
-        pm = QPixmap(height, height)
+def _svg_pixmap(path: Path, width: int, height: int) -> QPixmap:
+    from PySide6.QtGui import QImage
+    from PySide6.QtSvg import QSvgRenderer
+
+    renderer = QSvgRenderer(str(path))
+    if not renderer.isValid() or width < 1 or height < 1:
+        pm = QPixmap(max(1, width), max(1, height))
         pm.fill(Qt.GlobalColor.transparent)
         return pm
-    w, h = src.width(), src.height()
-    crop = src.copy(int(w * 0.28), int(h * 0.02), int(w * 0.44), int(h * 0.35))
-    out_w = int(height * crop.width() / max(1, crop.height()))
-    pm = crop.scaled(
-        out_w, height, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
-    )
-    if led is not None:
-        painted = QPixmap(pm)
-        p = QPainter(painted)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        pen = QPen(QColor(led), max(2.0, height * 0.08))
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        p.setPen(pen)
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        mid = pm.width() / 2
-        p.drawPolyline(
-            QPolygonF(
-                [
-                    QPointF(mid - height * 0.35, height * 0.25),
-                    QPointF(mid, height * 0.75),
-                    QPointF(mid + height * 0.35, height * 0.25),
-                ]
-            )
-        )
-        p.end()
-        return painted
-    return pm
+    img = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(img)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    renderer.render(painter, QRectF(0, 0, width, height))
+    painter.end()
+    return QPixmap.fromImage(img)
+
+
+def logo_pixmap(height: int = 40, _led: QColor | None = None) -> QPixmap:
+    """App icon for the title bar / window icon."""
+    path = _ASSETS / "vader4pro_app_icon.svg"
+    return _svg_pixmap(path, height, height)
+
+
+def lockup_pixmap(height: int = 56) -> QPixmap:
+    """Wide brand lockup (icon + wordmark) — splash / about."""
+    path = _ASSETS / "vader4pro_logo_lockup.svg"
+    # Source viewBox 1400×520
+    width = max(1, int(height * 1400 / 520))
+    return _svg_pixmap(path, width, height)
 
 
 def _norm_axis(v: int) -> float:
@@ -78,7 +72,6 @@ class LivePadView(QWidget):
 
     def __init__(
         self,
-        face: str = "front",
         parent: QWidget | None = None,
         *,
         show_hotspots: bool = True,
@@ -86,7 +79,6 @@ class LivePadView(QWidget):
     ) -> None:
         super().__init__(parent)
         self.setMinimumSize(480, 300)
-        self._face = face
         self._show_hotspots = show_hotspots
         self._follow_input = follow_input
         self._lx = self._ly = self._rx = self._ry = 0
@@ -123,26 +115,12 @@ class LivePadView(QWidget):
         self._reload_body()
         self.update()
 
-    def set_face(self, face: str) -> None:
-        # SS4 F4 overlay is front-only; back keeps legacy photo if present
-        if face not in ("front", "back"):
-            return
-        self._face = face
-        self._reload_body()
-        self.update()
-
     def _reload_body(self) -> None:
         self._body_scaled = QPixmap()
         self._body_scaled_key = None
-        if self._face == "back":
-            path = _ASSETS / "vader4_back.png"
-            self._body = QPixmap(str(path))
-            return
-        # SS4 hotspots are absolute px on the wireframe SVG viewBox (508×421),
-        # not on default_product_f4.png — same pairing as DeviceWireframe in SS4.
+        # Hotspots are absolute px on the SS4 wireframe viewBox (508×421).
         self._body = self._render_wireframe()
         if self._body.isNull():
-            # last resort: photo (hotspots will be wrong)
             self._body = QPixmap(str(_SS4 / "default_product_f4.png"))
 
     def _render_wireframe(self) -> QPixmap:
@@ -277,8 +255,6 @@ class LivePadView(QWidget):
             self.update()
 
     def _vb(self) -> tuple[float, float]:
-        if self._face == "back" and not self._body.isNull():
-            return float(self._body.width()), float(self._body.height())
         vb = self._cfg.get("viewBox") or {}
         return float(vb.get("width", 508)), float(vb.get("height", 421))
 
@@ -320,15 +296,14 @@ class LivePadView(QWidget):
             p.drawPixmap(dest.topLeft(), body)
         else:
             p.setPen(QColor("#aaa"))
-            p.drawText(dest, int(Qt.AlignmentFlag.AlignCenter), "Missing SS4 F4 product art")
+            p.drawText(dest, int(Qt.AlignmentFlag.AlignCenter), "Missing SS4 F4 wireframe")
 
-        if self._face == "front":
-            p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-            p.setClipRect(dest)
-            self._paint_led_v(p, dest)
-            if self._show_hotspots:
-                self._paint_ss4_hotspots(p, dest)
-            p.setClipping(False)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        p.setClipRect(dest)
+        self._paint_led_v(p, dest)
+        if self._show_hotspots:
+            self._paint_ss4_hotspots(p, dest)
+        p.setClipping(False)
 
         if not self._connected:
             p.fillRect(dest, QColor(20, 22, 28, 150))

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b1d33"/><stop offset="1" stop-color="#090a12"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c8cff"/><stop offset=".55" stop-color="#3a3f6a"/><stop offset="1" stop-color="#22e4d0"/>
+    </linearGradient>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2c3040"/><stop offset="1" stop-color="#171923"/>
+    </linearGradient>
+    <linearGradient id="volt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8d7bff"/><stop offset="1" stop-color="#22e4d0"/>
+    </linearGradient>
+    <radialGradient id="halo" cx=".5" cy=".38" r=".5">
+      <stop offset="0" stop-color="#5b6bff" stop-opacity=".45"/><stop offset="1" stop-color="#5b6bff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="228" fill="url(#halo)"/>
+  <rect x="3" y="3" width="1018" height="1018" rx="225" stroke="#fff" stroke-opacity=".08" stroke-width="3"/>
+  <g transform="translate(55.074 114.38) scale(1.78)">
+    <path d="M185.721 298.199C159.773 298.199 148.447 311.849 132.698 334.948C117.473 355.423 97.5235 380.622 88.5987 382.722C71.2742 384.297 35.05 378.522 34 313.949C35.5551 232.05 77.574 136.503 85.4488 124.428C101.251 102.664 147.489 82.9541 194.646 82.9541H312.768C328.912 82.9541 393.958 87.7807 421.966 124.428C429.84 136.503 471.859 232.05 473.414 313.949C472.364 378.522 436.14 384.297 418.816 382.722C409.891 380.622 389.941 355.423 374.717 334.948C358.967 311.849 347.642 298.199 321.693 298.199H185.721Z" fill="url(#shell)" stroke="url(#rim)" stroke-width="3.2" stroke-linejoin="round"/>
+    <path d="M60 150C120 108 190 96 256.5 96C323 96 393 108 450 150" stroke="#fff" stroke-opacity=".07" stroke-width="2" fill="none"/>
+    <path d="M253.275 115.013L234.26 107.184L249.919 130.672L251.038 128.435L244.327 117.25L249.919 118.369L254.547 125.89L251.038 132.909L256.63 147.45L262.222 132.909L259.869 128.203L257.905 131.346L258.867 132.909L256.63 147.45L254.393 132.909L263.341 118.369L268.934 117.25L262.223 128.435L263.341 130.672L279 107.184L259.986 115.013L256.63 121.724L253.275 115.013Z" fill="url(#volt)" filter="url(#glow)" opacity=".9"/>
+    <path d="M253.275 115.013L234.26 107.184L249.919 130.672L251.038 128.435L244.327 117.25L249.919 118.369L254.547 125.89L251.038 132.909L256.63 147.45L262.222 132.909L259.869 128.203L257.905 131.346L258.867 132.909L256.63 147.45L254.393 132.909L263.341 118.369L268.934 117.25L262.223 128.435L263.341 130.672L279 107.184L259.986 115.013L256.63 121.724L253.275 115.013Z" fill="#fff" transform="translate(256.6 130) scale(1.9) translate(-256.6 -130)"/>
+    <path d="M206.6 193C209.214 193 211.334 195.12 211.334 197.734V219.667H233.266C235.88 219.667 238 221.787 238 224.401V241.6C238 244.214 235.88 246.334 233.266 246.334H211.334V268.267C211.334 270.881 209.214 273 206.6 273H189.401C186.787 273 184.667 270.881 184.667 268.267V246.334H162.734C160.12 246.334 158 244.214 158 241.6V224.401C158 221.787 160.12 219.667 162.734 219.667H184.667V197.734C184.667 195.12 186.787 193 189.401 193H206.6Z" fill="#0e0f16" stroke="#7E858E" stroke-opacity=".6" stroke-width="1.5" transform="translate(-2 6)"/>
+    <g fill="#0e0f16" stroke="#7E858E" stroke-opacity=".6" stroke-width="1.5">
+      <circle cx="350" cy="137" r="12"/><circle cx="378" cy="165" r="12"/>
+      <circle cx="322" cy="165" r="12"/>
+    </g>
+    <circle cx="350" cy="193" r="12" fill="url(#volt)"/>
+    <g>
+      <circle cx="160" cy="165" r="31" fill="#0e0f16" stroke="#7E858E" stroke-opacity=".6" stroke-width="1.5"/>
+      <circle cx="160" cy="165" r="21" fill="#1c1e2a" stroke="url(#volt)" stroke-width="2.5"/>
+      <circle cx="160" cy="165" r="10" fill="#0e0f16" stroke="#7E858E" stroke-opacity=".5" stroke-width="1"/>
+      <circle cx="314" cy="239" r="31" fill="#0e0f16" stroke="#7E858E" stroke-opacity=".6" stroke-width="1.5"/>
+      <circle cx="314" cy="239" r="21" fill="#1c1e2a" stroke="url(#volt)" stroke-width="2.5"/>
+      <circle cx="314" cy="239" r="10" fill="#0e0f16" stroke="#7E858E" stroke-opacity=".5" stroke-width="1"/>
+    </g>
+  </g>
+</svg>

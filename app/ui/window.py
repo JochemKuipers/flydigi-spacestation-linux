@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer, Slot
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -78,6 +78,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Vader 4 Pro")
+        self.setWindowIcon(QIcon(logo_pixmap(128)))
         self.resize(1100, 740)
         self._color = QColor(76, 141, 255)
         self._config: dict | None = None
@@ -157,13 +158,15 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout(bar)
         row.setContentsMargins(16, 8, 20, 8)
         self.logo = QLabel()
-        self.logo.setPixmap(logo_pixmap(40, self._color))
+        self.logo.setPixmap(logo_pixmap(44))
+        self.logo.setFixedSize(44, 44)
+        self.logo.setScaledContents(False)
         row.addWidget(self.logo)
         titles = QVBoxLayout()
         titles.setSpacing(0)
         title = QLabel("Vader 4 Pro")
         title.setObjectName("AppTitle")
-        sub = QLabel("Flydigi Space Station for Linux")
+        sub = QLabel("Controller companion for Linux")
         sub.setObjectName("AppSubtitle")
         titles.addWidget(title)
         titles.addWidget(sub)
@@ -602,7 +605,6 @@ class MainWindow(QMainWindow):
         # Overview pad: update mode/color without forcing a rebuild storm when hidden
         if self.live_pad.isVisible():
             self.live_pad.set_led_state(**kwargs)
-        self.logo.setPixmap(logo_pixmap(40, self._color if mode in _COLOR_MODES else QColor("#4c8dff")))
 
     def _update_color_btn(self) -> None:
         mode = self._led_mode_value()
