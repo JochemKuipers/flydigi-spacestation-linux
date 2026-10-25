@@ -202,7 +202,8 @@ class MainWindow(QMainWindow):
         pad_card = _card()
         pad_l = QVBoxLayout(pad_card)
         pad_l.setContentsMargins(12, 12, 12, 12)
-        self.live_pad = LivePadView()
+        self.live_pad = LivePadView(show_led=False)
+        self.live_pad.setMinimumSize(420, 280)
         pad_l.addWidget(self.live_pad, stretch=1)
         mid.addWidget(pad_card, stretch=3)
 
@@ -245,7 +246,9 @@ class MainWindow(QMainWindow):
         pl = QVBoxLayout(prev)
         pl.setContentsMargins(12, 12, 12, 12)
         # Lighting canvas: wireframe + LED only (no hotspot/input churn)
-        self.led_preview = LivePadView(show_hotspots=False, follow_input=False)
+        self.led_preview = LivePadView(
+            show_hotspots=False, follow_input=False, show_led=True
+        )
         self.led_preview.setMinimumSize(360, 280)
         self.led_preview.set_connected(True)
         pl.addWidget(self.led_preview)
@@ -480,9 +483,6 @@ class MainWindow(QMainWindow):
             "loop_time": cfg.loop_time,
         }
         self.led_preview.set_led_state(**kwargs)
-        # Overview pad: update mode/color without forcing a rebuild storm when hidden
-        if self.live_pad.isVisible():
-            self.live_pad.set_led_state(**kwargs)
 
     def _update_color_btn(self) -> None:
         mode = self._led_mode_value()
@@ -597,7 +597,6 @@ class MainWindow(QMainWindow):
             "colors": led.get("colors") or [],
         }
         self.led_preview.set_led_state(**kwargs)
-        self.live_pad.set_led_state(**kwargs)
 
     # —— device ——
     @Slot()

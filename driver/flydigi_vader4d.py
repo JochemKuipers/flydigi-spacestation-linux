@@ -29,6 +29,7 @@ from evdev import AbsInfo, UInput, ecodes
 
 from flydigi.bt_evdev import BtEvdevReader, find_bt_evdev
 from flydigi.bt_hid_report import BtHidReport, parse_bt_hid_report
+from flydigi.button_actions import ActionPlayer
 from flydigi.dinput_proto import (
     DeviceInfo,
     DInputDevice,
@@ -199,27 +200,52 @@ class Daemon:
         self._rumble_hi = 0
         self._rumble_until = 0.0
         self._rumble_last = 0.0
+        self.actions = ActionPlayer()
 
     def _publish_uinput(self, report: V1Report | BtHidReport) -> None:
         ui = self.ui
         if ui is None:
             return
+        # Host-side keyboard / combo / macro (SS FeizVKB equivalent).
+        try:
+            self.actions.on_report(
+                report.buttons,
+                hat_x=report.hat_x,
+                hat_y=report.hat_y,
+                lt=report.lt,
+                rt=report.rt,
+            )
+        except OSError:
+            pass
+        suppress = self.actions.overlay_report_names()
         last = self._last
         for name, code in BTN_MAP.items():
-            val = 1 if report.buttons.get(name) else 0
+            if name in suppress:
+                val = 0
+            else:
+                val = 1 if report.buttons.get(name) else 0
             key = f"b:{name}"
             if last.get(key) != val:
                 ui.write(ecodes.EV_KEY, code, val)
                 last[key] = val
+        hat_x, hat_y = report.hat_x, report.hat_y
+        if "hat_left" in suppress and hat_x < 0:
+            hat_x = 0
+        if "hat_right" in suppress and hat_x > 0:
+            hat_x = 0
+        if "hat_up" in suppress and hat_y < 0:
+            hat_y = 0
+        if "hat_down" in suppress and hat_y > 0:
+            hat_y = 0
         for abs_code, value, key in (
             (ecodes.ABS_X, report.lx, "lx"),
             (ecodes.ABS_Y, report.ly, "ly"),
             (ecodes.ABS_RX, report.rx, "rx"),
             (ecodes.ABS_RY, report.ry, "ry"),
-            (ecodes.ABS_Z, report.lt, "lt"),
-            (ecodes.ABS_RZ, report.rt, "rt"),
-            (ecodes.ABS_HAT0X, report.hat_x, "hx"),
-            (ecodes.ABS_HAT0Y, report.hat_y, "hy"),
+            (ecodes.ABS_Z, 0 if "lt" in suppress else report.lt, "lt"),
+            (ecodes.ABS_RZ, 0 if "rt" in suppress else report.rt, "rt"),
+            (ecodes.ABS_HAT0X, hat_x, "hx"),
+            (ecodes.ABS_HAT0Y, hat_y, "hy"),
         ):
             if last.get(key) != value:
                 ui.write(ecodes.EV_ABS, abs_code, value)
@@ -284,6 +310,21 @@ class Daemon:
                 self._reply(c, self._cmd_config_set_motor(msg))
             elif cmd == "config_set_feel":
                 self._reply(c, self._cmd_config_set_feel(msg))
+            elif cmd == "actions_get":
+                self._reply(
+                    c,
+                    {
+                        "ok": True,
+                        "actions": self.actions.actions,
+                        "path": str(self.actions.path),
+                    },
+                )
+            elif cmd == "actions_set":
+                acts = msg.get("actions") or {}
+                if not isinstance(acts, dict):
+                    raise ValueError("actions must be an object")
+                self.actions.save({str(k): v for k, v in acts.items()})
+                self._reply(c, {"ok": True, "actions": self.actions.actions})
             else:
                 self._reply(c, {"ok": False, "error": f"unknown cmd: {cmd}"})
         except Exception as exc:  # noqa: BLE001 — surface to client
@@ -393,6 +434,7 @@ class Daemon:
 
     def _fetch_config(self):
         dev = self._require_dev()
+        cached = self._cfg_raw
         self._cfg_raw = None
         dev.request_gamepad_config()
         deadline = time.monotonic() + 5.0
@@ -408,7 +450,11 @@ class Daemon:
             if isinstance(msg, DeviceInfo):
                 self._info = msg
         if self._cfg_raw is None:
-            raise TimeoutError("config read timeout")
+            # Pad sometimes ignores a second read while busy — reuse last blob.
+            if cached is not None:
+                self._cfg_raw = cached
+            else:
+                raise TimeoutError("config read timeout")
         return decode_gamepad_config(self._cfg_raw)
 
     def _write_config(self, cfg) -> None:
@@ -784,6 +830,7 @@ class Daemon:
         if self.ui:
             self.ui.close()
             self.ui = None
+        self.actions.close()
         if self.dev:
             self.dev.close()
             self.dev = None

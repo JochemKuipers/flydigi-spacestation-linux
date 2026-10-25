@@ -76,11 +76,13 @@ class LivePadView(QWidget):
         *,
         show_hotspots: bool = True,
         follow_input: bool = True,
+        show_led: bool = True,
     ) -> None:
         super().__init__(parent)
-        self.setMinimumSize(480, 300)
+        self.setMinimumSize(280, 180)
         self._show_hotspots = show_hotspots
         self._follow_input = follow_input
+        self._show_led = show_led
         self._lx = self._ly = self._rx = self._ry = 0
         self._lt = self._rt = 0
         self._buttons: set[str] = set()
@@ -96,8 +98,6 @@ class LivePadView(QWidget):
         self._led_loop_time = 50
         self._cfg = load_device_config()
         self._body = QPixmap()
-        self._body_scaled = QPixmap()
-        self._body_scaled_key: tuple[int, int] | None = None
         self._led_pts_key: tuple[int, int] | None = None
         self._led_pts: list[QPointF] = []
         self._selected_id: int | None = None
@@ -116,12 +116,11 @@ class LivePadView(QWidget):
         self.update()
 
     def _reload_body(self) -> None:
-        self._body_scaled = QPixmap()
-        self._body_scaled_key = None
         # Hotspots are absolute px on the SS4 wireframe viewBox (508×421).
         self._body = self._render_wireframe()
         if self._body.isNull():
             self._body = QPixmap(str(_SS4 / "default_product_f4.png"))
+        self._led_pts_key = None
 
     def _render_wireframe(self) -> QPixmap:
         from PySide6.QtGui import QImage
@@ -198,12 +197,16 @@ class LivePadView(QWidget):
         self._led_loop_time = max(1, cfg.loop_time)
 
     def _sync_anim_timer(self) -> None:
-        needs = self._led_mode in (
-            LED_STREAMLINED,
-            LED_BREATHING,
-            LED_GRADIENT,
-            LED_FEEDBACK,
-        ) or (self._led_loop_end > self._led_loop_start)
+        needs = self._show_led and (
+            self._led_mode
+            in (
+                LED_STREAMLINED,
+                LED_BREATHING,
+                LED_GRADIENT,
+                LED_FEEDBACK,
+            )
+            or (self._led_loop_end > self._led_loop_start)
+        )
         # Preview can run smooth; pad still gets discrete firmware frames via build_led
         self._anim.setInterval(33)
         if needs and self.isVisible() and not self._anim.isActive():
@@ -263,55 +266,56 @@ class LivePadView(QWidget):
         return float(vb.get("width", 508)), float(vb.get("height", 421))
 
     def _dest(self) -> QRectF:
+        """Letterboxed viewBox rect in widget pixels.
+
+        Width/height are integers so the scaled body pixmap and LED/hotspot
+        mapping share the exact same coordinate space (float truncation was
+        making the V drift on resize).
+        """
         vw, vh = self._vb()
+        if vw <= 0 or vh <= 0 or self.width() < 1 or self.height() < 1:
+            return QRectF()
         scale = min(self.width() / vw, self.height() / vh)
-        dw, dh = vw * scale, vh * scale
-        return QRectF((self.width() - dw) / 2, (self.height() - dh) / 2, dw, dh)
-
-    def _map_vb(self, x: float, y: float, dest: QRectF) -> QPointF:
-        """Map wireframe viewBox px → widget (1:1 with SS4 absolute hotspot layout)."""
-        vw, vh = self._vb()
-        return QPointF(
-            dest.left() + x / vw * dest.width(), dest.top() + y / vh * dest.height()
-        )
-
-    def _r(self, dest: QRectF, n: float) -> float:
-        return n * dest.width() / self._vb()[0]
-
-    def _scaled_body(self, dest: QRectF) -> QPixmap:
-        key = (int(dest.width()), int(dest.height()))
-        if self._body_scaled_key == key and not self._body_scaled.isNull():
-            return self._body_scaled
-        if self._body.isNull() or key[0] < 1 or key[1] < 1:
-            return QPixmap()
-        self._body_scaled = self._body.scaled(
-            key[0],
-            key[1],
-            Qt.AspectRatioMode.IgnoreAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        self._body_scaled_key = key
-        return self._body_scaled
+        dw = max(1, int(vw * scale))
+        dh = max(1, int(vh * scale))
+        # Keep aspect exact to viewBox (fix 1px rounding skew).
+        if dw / vw < dh / vh:
+            dh = max(1, int(dw * vh / vw))
+        else:
+            dw = max(1, int(dh * vw / vh))
+        x = (self.width() - dw) // 2
+        y = (self.height() - dh) // 2
+        return QRectF(x, y, dw, dh)
 
     def paintEvent(self, _event) -> None:
         p = QPainter(self)
         p.fillRect(self.rect(), QColor("#12141a"))
         dest = self._dest()
-        body = self._scaled_body(dest)
-        if not body.isNull():
-            p.drawPixmap(dest.topLeft(), body)
+        if dest.isEmpty():
+            return
+        vw, vh = self._vb()
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+
+        # One transform: body + LED + hotspots all in viewBox space — no relative drift.
+        p.save()
+        p.setClipRect(dest)
+        p.translate(dest.left(), dest.top())
+        p.scale(dest.width() / vw, dest.height() / vh)
+        if not self._body.isNull():
+            p.drawPixmap(QRectF(0, 0, vw, vh), self._body, QRectF(self._body.rect()))
         else:
             p.setPen(QColor("#aaa"))
             p.drawText(
-                dest, int(Qt.AlignmentFlag.AlignCenter), "Missing SS4 F4 wireframe"
+                QRectF(0, 0, vw, vh),
+                int(Qt.AlignmentFlag.AlignCenter),
+                "Missing SS4 F4 wireframe",
             )
-
-        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        p.setClipRect(dest)
-        self._paint_led_v(p, dest)
+        if self._show_led:
+            self._paint_led_v(p)
         if self._show_hotspots:
-            self._paint_ss4_hotspots(p, dest)
-        p.setClipping(False)
+            self._paint_ss4_hotspots_vb(p)
+        p.restore()
 
         if not self._connected:
             p.fillRect(dest, QColor(20, 22, 28, 150))
@@ -323,17 +327,16 @@ class LivePadView(QWidget):
                 dest, int(Qt.AlignmentFlag.AlignCenter), "Connect your Vader 4 Pro"
             )
 
-    def _led_strip_points(self, dest: QRectF, steps: int = 36) -> list[QPointF]:
-        """Dense polyline along the V — continuous light bar, not discrete LEDs."""
-        key = (int(dest.width()), int(dest.height()))
-        if self._led_pts_key == key and len(self._led_pts) == steps + 1:
+    def _led_strip_points_vb(self, steps: int = 36) -> list[QPointF]:
+        """Polyline in wireframe viewBox coordinates (not widget pixels)."""
+        if self._led_pts_key == (0, steps) and len(self._led_pts) == steps + 1:
             return self._led_pts
         path = self._cfg.get("led_path") or []
         if len(path) < 3:
             return []
-        a = self._map_vb(float(path[0][0]), float(path[0][1]), dest)
-        b = self._map_vb(float(path[1][0]), float(path[1][1]), dest)
-        c = self._map_vb(float(path[2][0]), float(path[2][1]), dest)
+        a = QPointF(float(path[0][0]), float(path[0][1]))
+        b = QPointF(float(path[1][0]), float(path[1][1]))
+        c = QPointF(float(path[2][0]), float(path[2][1]))
         half = max(2, steps // 2)
         pts: list[QPointF] = []
         for i in range(half + 1):
@@ -347,7 +350,7 @@ class LivePadView(QWidget):
                 QPointF(b.x() + (c.x() - b.x()) * t, b.y() + (c.y() - b.y()) * t)
             )
         self._led_pts = pts
-        self._led_pts_key = key
+        self._led_pts_key = (0, steps)
         return pts
 
     @staticmethod
@@ -355,18 +358,18 @@ class LivePadView(QWidget):
         r, g, b = colorsys.hsv_to_rgb(h % 1.0, s, v)
         return QColor(int(r * 255), int(g * 255), int(b * 255))
 
-    def _paint_led_v(self, p: QPainter, dest: QRectF) -> None:
-        """Smooth continuous V strip (preview). Pad still uses firmware keyframes."""
+    def _paint_led_v(self, p: QPainter) -> None:
+        """Smooth V strip in viewBox space (painter already transformed)."""
         if self._led_mode in (0, LED_OFF, LED_CLOSE) or self._led_brightness <= 0:
             return
-        pts = self._led_strip_points(dest)
+        pts = self._led_strip_points_vb()
         if len(pts) < 2:
             return
 
         bright = self._led_brightness / 100.0
         speed = max(0.05, self._led_speed / 100.0)
         t = time.monotonic()
-        width = max(4.0, self._r(dest, 7.5))
+        width = 7.5  # viewBox px; scales with the shared transform
         n = len(pts) - 1
         base = QColor(self._led)
 
@@ -374,10 +377,8 @@ class LivePadView(QWidget):
         for i in range(n):
             u = i / max(1, n - 1)
             if self._led_mode == LED_STREAMLINED:
-                # Flow: moving rainbow chase (matches SS ledUnits table on the pad)
                 col = self._hsv((u + t * (0.12 + speed * 0.45)) % 1.0, 1.0, bright)
             elif self._led_mode == LED_GRADIENT:
-                # Gradient: fade between color and complement
                 pulse = 0.5 + 0.5 * math.sin(t * (1.0 + speed * 2.5))
                 c2 = QColor(255 - base.red(), 255 - base.green(), 255 - base.blue())
                 col = QColor(
@@ -434,18 +435,17 @@ class LivePadView(QWidget):
             return "rs" in self._buttons
         return rep in self._buttons
 
-    def _paint_ss4_hotspots(self, p: QPainter, dest: QRectF) -> None:
+    def _paint_ss4_hotspots_vb(self, p: QPainter) -> None:
+        """Hotspots in viewBox space (painter already transformed)."""
         for h in self._cfg.get("hotspots") or []:
             pos = h.get("position") or {}
             size = h.get("size") or {}
             x, y = float(pos.get("x", 0)), float(pos.get("y", 0))
             w, ht = float(size.get("width", 24)), float(size.get("height", 24))
-            # SS4: left/top/width/height in viewBox px on the wireframe
             cx = x + w / 2
             cy = y + ht / 2
-            c = self._map_vb(cx, cy, dest)
-            rw = self._r(dest, w * 0.5)
-            rh = self._r(dest, ht * 0.5)
+            c = QPointF(cx, cy)
+            rw, rh = w * 0.5, ht * 0.5
             active = self._hotspot_active(h)
             selected = (
                 self._selected_id is not None
@@ -468,7 +468,6 @@ class LivePadView(QWidget):
                 p.rotate(rot)
                 p.translate(-c)
 
-            # LT/RT use analog fill only — skip solid “pressed” background
             analog = name in ("Lt", "Rt")
             if selected:
                 p.setPen(QPen(QColor("#ffffff"), 2))
@@ -498,7 +497,6 @@ class LivePadView(QWidget):
             if text:
                 p.setPen(QColor("#e8e6e1"))
                 f = QFont(self.font())
-                # Fit single word inside the hotspot; Select/Start are long thin rotated pills
                 if name in ("Select", "Start"):
                     f.setPointSizeF(max(6.0, min(9.0, rh * 1.1)))
                     f.setBold(True)
@@ -527,7 +525,8 @@ class LivePadView(QWidget):
         p.setClipping(False)
 
     def mousePressEvent(self, event) -> None:
-        if self._face != "front" or event.button() != Qt.MouseButton.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
+            super().mousePressEvent(event)
             return
         dest = self._dest()
         pt = event.position() if hasattr(event, "position") else event.localPos()
@@ -536,6 +535,8 @@ class LivePadView(QWidget):
             return
         vx = (pt.x() - dest.left()) / dest.width() * vb_w
         vy = (pt.y() - dest.top()) / dest.height() * vb_h
+        # Prefer smallest hotspot containing the point (nested face buttons).
+        hit: tuple[float, int, str] | None = None
         for h in self._cfg.get("hotspots") or []:
             if not h.get("clickable", True):
                 continue
@@ -544,12 +545,19 @@ class LivePadView(QWidget):
             x, y = float(pos.get("x", 0)), float(pos.get("y", 0))
             w, ht = float(size.get("width", 0)), float(size.get("height", 0))
             if x <= vx <= x + w and y <= vy <= y + ht:
+                area = max(1.0, w * ht)
                 hid = int(h.get("id", -1))
                 name = str(h.get("name") or "")
-                self._selected_id = hid if hid < 32 else self._selected_id
-                self.hotspot_clicked.emit(hid, name)
-                self.update()
-                break
+                if hit is None or area < hit[0]:
+                    hit = (area, hid, name)
+        if hit is not None:
+            _area, hid, name = hit
+            if 0 <= hid < 32:
+                self._selected_id = hid
+            self.hotspot_clicked.emit(hid, name)
+            self.update()
+        else:
+            super().mousePressEvent(event)
 
 
 class StatChip(QWidget):
