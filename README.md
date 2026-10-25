@@ -2,8 +2,6 @@
 
 Native Linux support for the Flydigi Vader 4 Pro **without** Xbox/XInput spoofing, `xpad`, or Steam Input.
 
-**Private repo:** [jochem-kuipers/flydigi-spacestation-linux](https://origin.cursor.com/jochem-kuipers/flydigi-spacestation-linux) on Cursor Origin.
-
 ## Status
 
 | Component | Status |
