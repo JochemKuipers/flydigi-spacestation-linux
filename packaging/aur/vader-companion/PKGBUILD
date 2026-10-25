@@ -1,6 +1,6 @@
 # Maintainer: Jochem Kuipers <jochem@localhost>
 pkgname=vader-companion
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc='Vader Companion — configure Flydigi Vader 4 Pro on Linux'
 arch=('any')
@@ -9,7 +9,7 @@ license=('MIT')
 depends=('python' 'python-evdev' 'pyside6' 'flydigi-vader4d')
 makedepends=('python' 'git')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/JochemKuipers/flydigi-spacestation-linux/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('a4b3921e8da11e807b376cc2e5da7f2b4a8e7f9c2697ce934ae7993166bf4c78')
+sha256sums=('SKIP')
 
 prepare() {
   ln -sfn "flydigi-spacestation-linux-$pkgver" "$srcdir/$pkgname-$pkgver"

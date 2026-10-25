@@ -1,4 +1,11 @@
-flydigi-vader (0.1.0-1) UNRELEASED; urgency=medium
+flydigi-vader (0.1.1-1) unstable; urgency=medium
+
+  * Move flydigi-ctl into flydigi.ctl; driver no longer ships site-packages/app
+    (fixes pacman file conflict with vader-companion).
+
+ -- jochem-kuipers <jochem@localhost>  Sun, 25 Oct 2026 12:55:00 +0100
+
+flydigi-vader (0.1.0-1) unstable; urgency=medium
 
   * Initial packaging: flydigi-vader4d + vader-companion.
 

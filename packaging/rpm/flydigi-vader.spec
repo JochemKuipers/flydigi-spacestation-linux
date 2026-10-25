@@ -1,5 +1,5 @@
 Name:           flydigi-vader
-Version:        0.1.0
+Version:        0.1.1
 Release:        1%{?dist}
 Summary:        Flydigi Vader 4 Pro Linux driver and companion
 License:        MIT
@@ -45,8 +45,6 @@ cp -a %{_builddir}/stage-companion/. %{buildroot}/
 /usr/bin/flydigi-ctl
 /usr/lib/python3.*/site-packages/flydigi
 /usr/lib/python3.*/site-packages/driver
-/usr/lib/python3.*/site-packages/app/__init__.py
-/usr/lib/python3.*/site-packages/app/flydigi_ctl.py
 /usr/lib/systemd/user/flydigi-vader4d.service
 /usr/lib/udev/rules.d/99-flydigi-vader4.rules
 /usr/share/doc/flydigi-vader4d/
@@ -65,5 +63,8 @@ udevadm trigger >/dev/null 2>&1 || :
 echo "Enable the driver with: systemctl --user enable --now flydigi-vader4d.service"
 
 %changelog
+* Sun Oct 25 2026 jochem-kuipers <jochem@localhost> - 0.1.1-1
+- Move flydigi-ctl into flydigi.ctl so driver no longer ships site-packages/app.
+
 * Sun Oct 25 2026 jochem-kuipers <jochem@localhost> - 0.1.0-1
 - Initial package split: flydigi-vader4d + vader-companion.

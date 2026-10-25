@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flydigi-vader"
-version = "0.1.0"
+version = "0.1.1"
 description = "Flydigi Vader 4 Pro Linux driver and Vader Companion"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -27,7 +27,7 @@ dev = ["ruff>=0.6"]
 
 [project.scripts]
 flydigi-vader4d = "driver.flydigi_vader4d:main"
-flydigi-ctl = "app.flydigi_ctl:main"
+flydigi-ctl = "flydigi.ctl:main"
 vader-companion = "app.vader_companion:main"
 
 [project.urls]

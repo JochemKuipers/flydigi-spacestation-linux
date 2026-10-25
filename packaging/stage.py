@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import compileall
 import os
 import shutil
 import sys
@@ -43,7 +42,7 @@ def _copy_pkg(src: Path, dst: Path) -> None:
             "__pycache__", "*.pyc", "*.pyo", ".git", "*.service"
         ),
     )
-    compileall.compile_dir(str(dst), quiet=1)
+    # Do not compile here — bytecode embeds build paths and trips namcap/makepkg.
 
 
 def stage_driver(dest: Path, *, layout: str = "site-packages") -> None:
@@ -54,16 +53,8 @@ def stage_driver(dest: Path, *, layout: str = "site-packages") -> None:
     _copy_pkg(ROOT / "flydigi", site / "flydigi")
     _copy_pkg(ROOT / "driver", site / "driver")
 
-    # Minimal app package so flydigi-ctl imports work.
-    app_dst = site / "app"
-    app_dst.mkdir(parents=True)
-    (app_dst / "__init__.py").write_text(
-        '"""Minimal app package for flydigi-ctl."""\n', encoding="utf-8"
-    )
-    shutil.copy2(ROOT / "app" / "flydigi_ctl.py", app_dst / "flydigi_ctl.py")
-
     _write_script(dest / "usr/bin/flydigi-vader4d", "driver.flydigi_vader4d")
-    _write_script(dest / "usr/bin/flydigi-ctl", "app.flydigi_ctl")
+    _write_script(dest / "usr/bin/flydigi-ctl", "flydigi.ctl")
 
     unit = dest / "usr/lib/systemd/user/flydigi-vader4d.service"
     unit.parent.mkdir(parents=True)
