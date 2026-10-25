@@ -10,7 +10,7 @@ depends=('python' 'python-evdev' 'systemd')
 makedepends=('python' 'git')
 install="$pkgname.install"
 source=("$pkgname-$pkgver.tar.gz::https://github.com/JochemKuipers/flydigi-spacestation-linux/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('8593ada2921411eae99346b351d071b5fcf53717a964df9dd87054c1d86b98ac')
 
 prepare() {
   ln -sfn "flydigi-spacestation-linux-$pkgver" "$srcdir/$pkgname-$pkgver"
