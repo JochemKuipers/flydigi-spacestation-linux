@@ -71,7 +71,9 @@ def load_image(path: Path) -> tuple[bytearray, int, int]:
 
 def fetch_catalog_version(timeout: float = 10.0) -> dict:
     """Return catalog dict with at least ``version`` (and url/name when present)."""
-    req = urllib.request.Request(CATALOG_URL, headers={"User-Agent": "flydigi-spacestation-linux"})
+    req = urllib.request.Request(
+        CATALOG_URL, headers={"User-Agent": "flydigi-spacestation-linux"}
+    )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         payload = json.load(resp)
     data = payload.get("data", payload)
@@ -175,7 +177,9 @@ def preflight_start_ack(
                 f"no report-5 ACK to OTA start within {timeout}s — aborting before data"
             )
         if _is_fail(ack):
-            raise OtaPreflightError(f"OTA fail status on start ({ack[6]}) — aborting before data")
+            raise OtaPreflightError(
+                f"OTA fail status on start ({ack[6]}) — aborting before data"
+            )
         return ack
     finally:
         try:
@@ -276,7 +280,9 @@ def _flash_fd(
     while True:
         ack = _wait_report5(fd, ACK_TIMEOUT)
         if ack is None:
-            raise TimeoutError(f"no ACK after index={ota_index} ({time.monotonic() - t0:.1f}s)")
+            raise TimeoutError(
+                f"no ACK after index={ota_index} ({time.monotonic() - t0:.1f}s)"
+            )
         if _is_fail(ack):
             raise RuntimeError(f"OTA Fail status={ack[6]}")
         if _is_ok(ack):

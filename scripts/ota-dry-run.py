@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Dry-run Vader 4 Pro HID OTA start frame — no image payload.
 
-  python3 scripts/ota-dry-run.py
+python3 scripts/ota-dry-run.py
 """
 
 from __future__ import annotations
@@ -17,8 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from flydigi.enumerate import PID, VID, list_vader4_interfaces  # noqa: E402
-from flydigi.ota import OUT_LEN, REPORT_ID, usb_ota_ready  # noqa: E402
+from flydigi.enumerate import PID, VID, list_vader4_interfaces
+from flydigi.ota import OUT_LEN, REPORT_ID, usb_ota_ready
 
 
 def _hex(data: bytes, n: int = 16) -> str:

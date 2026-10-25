@@ -79,7 +79,9 @@ class ManualView(QWidget):
         official.clicked.connect(self._open_official)
         pdf_btn = QPushButton("Open bundled PDF")
         pdf_btn.clicked.connect(self._open_pdf)
-        tip = QLabel("Extracted from Flydigi’s PDF — online copy wins if anything disagrees.")
+        tip = QLabel(
+            "Extracted from Flydigi’s PDF — online copy wins if anything disagrees."
+        )
         tip.setObjectName("Muted")
         tip.setWordWrap(True)
         footer.addWidget(official)
@@ -250,7 +252,9 @@ class ManualView(QWidget):
             lab = QLabel()
             lab.setObjectName("ManualImage")
             lab.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lab.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+            lab.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+            )
             if path.is_file():
                 # Native PDF embeds are ~1240px JPEG pages — never upscale past 1× DPR
                 pm = QPixmap(str(path))
@@ -258,7 +262,9 @@ class ManualView(QWidget):
                 max_w = int(min(640, pm.width() / dpr))
                 target_w = int(max_w * dpr)
                 if pm.width() > target_w:
-                    pm = pm.scaledToWidth(target_w, Qt.TransformationMode.SmoothTransformation)
+                    pm = pm.scaledToWidth(
+                        target_w, Qt.TransformationMode.SmoothTransformation
+                    )
                 pm.setDevicePixelRatio(dpr)
                 lab.setPixmap(pm)
                 lab.setToolTip(str(block.get("alt") or src))

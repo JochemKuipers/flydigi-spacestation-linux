@@ -80,6 +80,8 @@ def parse_v1_report(data: bytes) -> V1Report | None:
         "ls": bool(b10 & 0x40),
         "rs": bool(b10 & 0x80),
         "guide": bool(b8 & 0x08),
+        # FN / ◯ — SDL hides this (gyro-mouse toggle); we still surface it for the overlay
+        "fn": bool(b8 & 0x01),
         "c": bool(b7 & 0x01),
         "z": bool(b7 & 0x02),
         "m1": bool(b7 & 0x04),

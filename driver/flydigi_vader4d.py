@@ -27,15 +27,15 @@ if str(_ROOT) not in sys.path:
 
 from evdev import AbsInfo, UInput, ecodes
 
-from flydigi.dinput_proto import (
-    DInputDevice,
-    DeviceInfo,
-    LedConfig,
-    encode_led_config,
-    build_led,
-)
 from flydigi.bt_evdev import BtEvdevReader, find_bt_evdev
 from flydigi.bt_hid_report import BtHidReport, parse_bt_hid_report
+from flydigi.dinput_proto import (
+    DeviceInfo,
+    DInputDevice,
+    LedConfig,
+    build_led,
+    encode_led_config,
+)
 from flydigi.enumerate import (
     BT_PID,
     BT_VID,
@@ -46,7 +46,7 @@ from flydigi.enumerate import (
 )
 from flydigi.gamepad_config import decode_gamepad_config, encode_gamepad_config
 from flydigi.ipc import default_socket_path
-from flydigi.v1_report import V1Report, parse_v1_report
+from flydigi.v1_report import V1Report
 
 BTN_MAP = {
     "a": ecodes.BTN_SOUTH,
@@ -66,19 +66,38 @@ BTN_MAP = {
     "m2": ecodes.BTN_TRIGGER_HAPPY2,
     "m3": ecodes.BTN_TRIGGER_HAPPY3,
     "m4": ecodes.BTN_TRIGGER_HAPPY4,
+    "fn": ecodes.BTN_TRIGGER_HAPPY5,
 }
 
 CAP = {
     ecodes.EV_KEY: list(BTN_MAP.values()),
     ecodes.EV_ABS: [
-        (ecodes.ABS_X, AbsInfo(value=0, min=-32767, max=32767, fuzz=16, flat=128, resolution=0)),
-        (ecodes.ABS_Y, AbsInfo(value=0, min=-32767, max=32767, fuzz=16, flat=128, resolution=0)),
-        (ecodes.ABS_RX, AbsInfo(value=0, min=-32767, max=32767, fuzz=16, flat=128, resolution=0)),
-        (ecodes.ABS_RY, AbsInfo(value=0, min=-32767, max=32767, fuzz=16, flat=128, resolution=0)),
+        (
+            ecodes.ABS_X,
+            AbsInfo(value=0, min=-32767, max=32767, fuzz=16, flat=128, resolution=0),
+        ),
+        (
+            ecodes.ABS_Y,
+            AbsInfo(value=0, min=-32767, max=32767, fuzz=16, flat=128, resolution=0),
+        ),
+        (
+            ecodes.ABS_RX,
+            AbsInfo(value=0, min=-32767, max=32767, fuzz=16, flat=128, resolution=0),
+        ),
+        (
+            ecodes.ABS_RY,
+            AbsInfo(value=0, min=-32767, max=32767, fuzz=16, flat=128, resolution=0),
+        ),
         (ecodes.ABS_Z, AbsInfo(value=0, min=0, max=255, fuzz=0, flat=0, resolution=0)),
         (ecodes.ABS_RZ, AbsInfo(value=0, min=0, max=255, fuzz=0, flat=0, resolution=0)),
-        (ecodes.ABS_HAT0X, AbsInfo(value=0, min=-1, max=1, fuzz=0, flat=0, resolution=0)),
-        (ecodes.ABS_HAT0Y, AbsInfo(value=0, min=-1, max=1, fuzz=0, flat=0, resolution=0)),
+        (
+            ecodes.ABS_HAT0X,
+            AbsInfo(value=0, min=-1, max=1, fuzz=0, flat=0, resolution=0),
+        ),
+        (
+            ecodes.ABS_HAT0Y,
+            AbsInfo(value=0, min=-1, max=1, fuzz=0, flat=0, resolution=0),
+        ),
     ],
 }
 
@@ -438,8 +457,12 @@ class Daemon:
 
     def _cmd_config_set_sticks(self, msg: dict[str, Any]) -> dict[str, Any]:
         cfg = self._fetch_config()
-        for side, attr in (("left_stick", "left_stick"), ("right_stick", "right_stick"),
-                           ("left_trigger", "left_trigger"), ("right_trigger", "right_trigger")):
+        for side, attr in (
+            ("left_stick", "left_stick"),
+            ("right_stick", "right_stick"),
+            ("left_trigger", "left_trigger"),
+            ("right_trigger", "right_trigger"),
+        ):
             patch = msg.get(side)
             if not patch:
                 continue
@@ -624,7 +647,11 @@ class Daemon:
                     time.sleep(0.2)
                     self._reconnect()
                     continue
-                fds = [*src_fds, self._listen.fileno(), *[c.fileno() for c in self._clients]]
+                fds = [
+                    *src_fds,
+                    self._listen.fileno(),
+                    *[c.fileno() for c in self._clients],
+                ]
                 timeout = 0.025 if self._rumble_until > time.monotonic() else 1.0
                 try:
                     r, _, _ = select.select(fds, [], [], timeout)
@@ -644,7 +671,10 @@ class Daemon:
                         try:
                             rep = self.bt.pump()
                         except OSError as exc:
-                            print(f"flydigi-vader4d: BT read error {exc}, reconnecting…", flush=True)
+                            print(
+                                f"flydigi-vader4d: BT read error {exc}, reconnecting…",
+                                flush=True,
+                            )
                             self._reconnect()
                             continue
                         if rep is not None:
@@ -656,7 +686,10 @@ class Daemon:
                         except BlockingIOError:
                             continue
                         except OSError as exc:
-                            print(f"flydigi-vader4d: read error {exc}, reconnecting…", flush=True)
+                            print(
+                                f"flydigi-vader4d: read error {exc}, reconnecting…",
+                                flush=True,
+                            )
                             self._reconnect()
                             continue
                         # USB V1 or (rare) BT hidraw fallback
@@ -766,7 +799,9 @@ def run(once_list: bool = False, sock_path: Path | None = None) -> int:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--list", action="store_true", help="List matching hidraw nodes and exit")
+    p.add_argument(
+        "--list", action="store_true", help="List matching hidraw nodes and exit"
+    )
     p.add_argument(
         "--socket",
         type=Path,

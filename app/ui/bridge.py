@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+from contextlib import suppress
 
 from PySide6.QtCore import QObject, Signal
 
@@ -27,17 +28,17 @@ class DaemonBridge(QObject):
         if self._thread and self._thread.is_alive():
             return
         self._stop.clear()
-        self._thread = threading.Thread(target=self._run, name="daemon-bridge", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run, name="daemon-bridge", daemon=True
+        )
         self._thread.start()
 
     def stop(self) -> None:
         self._stop.set()
         client = self._client
         if client is not None:
-            try:
+            with suppress(OSError):
                 client.close()
-            except Exception:  # noqa: BLE001
-                pass
         if self._thread:
             self._thread.join(timeout=2.0)
             self._thread = None
@@ -62,7 +63,7 @@ class DaemonBridge(QObject):
                 client.connect(timeout=1.0)
                 self._client = client
             except OSError:
-                if not self._emit(self.status, f"Waiting for driver…"):
+                if not self._emit(self.status, "Waiting for driver…"):
                     return
                 self._stop.wait(1.0)
                 continue
@@ -73,23 +74,21 @@ class DaemonBridge(QObject):
                 if info.get("ok") and not self._emit(self.info, info["info"]):
                     return
                 client.request("subscribe")
-                client._sock.settimeout(0.5)  # noqa: SLF001
+                client._sock.settimeout(0.5)
                 while not self._stop.is_set():
-                    line = client._readline()  # noqa: SLF001
+                    line = client._readline()
                     if line is None:
                         continue
                     msg = json.loads(line)
-                    if msg.get("event") == "report":
-                        # strip bulky raw if present; keep UI payload small
-                        if not self._emit(self.report, msg):
-                            return
-            except Exception as exc:  # noqa: BLE001
+                    if msg.get("event") == "report" and not self._emit(
+                        self.report, msg
+                    ):
+                        return
+            except (OSError, TimeoutError, json.JSONDecodeError, RuntimeError) as exc:
                 if not self._stop.is_set():
                     self._emit(self.status, f"Driver disconnected ({exc})")
             finally:
                 self._client = None
-                try:
+                with suppress(OSError):
                     client.close()
-                except Exception:  # noqa: BLE001
-                    pass
             self._stop.wait(0.5)

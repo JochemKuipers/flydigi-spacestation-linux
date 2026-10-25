@@ -19,9 +19,15 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from flydigi.dinput_proto import DInputDevice  # noqa: E402
-from flydigi.enumerate import PID, VID, find_config_interface, list_vader4_interfaces  # noqa: E402
-from flydigi.ota import DEFAULT_BIN, PROVEN_PAD_VERSIONS, flash_bin, load_image, usb_ota_ready  # noqa: E402
+from flydigi.dinput_proto import DInputDevice
+from flydigi.enumerate import PID, VID, find_config_interface, list_vader4_interfaces
+from flydigi.ota import (
+    DEFAULT_BIN,
+    PROVEN_PAD_VERSIONS,
+    flash_bin,
+    load_image,
+    usb_ota_ready,
+)
 
 
 def _read_pad_version() -> str | None:
@@ -30,7 +36,7 @@ def _read_pad_version() -> str | None:
         info = dev.wait_device_info(timeout=2.0)
         dev.close()
         return info.firmware_version if info else None
-    except Exception:
+    except (OSError, TimeoutError, RuntimeError):
         return None
 
 
@@ -67,7 +73,7 @@ def main() -> int:
             f"dry-run ACK still required before data"
         )
 
-    image, size, crc = load_image(args.bin)
+    _image, size, crc = load_image(args.bin)
     print(f"image {args.bin.name}: size={size} crc={crc:#x} (+16 FF pad)")
     print(
         "plan: dry-run start ACK → full write"
@@ -105,7 +111,7 @@ def main() -> int:
             pad_version=pad_ver,
         )
         print(f"\nOTA success — done in {time.monotonic() - t0:.1f}s")
-    except Exception as e:
+    except (OSError, TimeoutError, RuntimeError, ValueError) as e:
         print(f"\nFLASH ERROR: {e}", file=sys.stderr)
         return 2
 
@@ -124,10 +130,12 @@ def main() -> int:
         info = dev.wait_device_info(timeout=3.0)
         dev.close()
         if info:
-            print(f"post-flash firmware={info.firmware_version} device_id={info.device_id}")
+            print(
+                f"post-flash firmware={info.firmware_version} device_id={info.device_id}"
+            )
         else:
             print("post-flash: no DeviceInfo yet")
-    except Exception as e:
+    except (OSError, TimeoutError, RuntimeError) as e:
         print(f"post-flash info: {e}")
     return 0
 

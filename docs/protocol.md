@@ -19,7 +19,7 @@ Legend: **O** = observed on hardware · **S** = from shipped Space Station 4.2.2
 | 0 | Report ID | `0x04` |
 | 1 | Magic | `0xFE` |
 | 7 | M1–M4, C, Z | M1=`0x04` … C=`0x01`, Z=`0x02` (**C**) |
-| 8 | Guide | Guide=`0x08` (**C**) |
+| 8 | FN + Guide | FN/◯=`0x01` (gyro-mouse chord; SDL hides it); Guide=`0x08` (**C**) |
 | 9 | Hat + A/B/Select/X | hat=`&0x0F`; A=`0x10`, B=`0x20`, Back=`0x40`, X=`0x80` |
 | 10 | Y/Start/LB/RB/LS/RS | Y=`0x01`, Start=`0x02`, LB=`0x04`, RB=`0x08`, LS=`0x40`, RS=`0x80` |
 | 11–16 | Accel | int16 pairs (**C**) |

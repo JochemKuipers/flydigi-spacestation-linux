@@ -3,6 +3,7 @@
 Ported from Flydigi Space Station UI defaults (same blob Space Station writes for F4).
 Mode index: 0=Flow, 1=Breath, 2=Gradient, 3=Feedback, 4=Steady, 5=Close.
 """
+
 from __future__ import annotations
 
 # fmt: off
@@ -11,11 +12,11 @@ LED_UNITS = [[[[50, 50, 0], [0, 100, 0], [0, 50, 50], [0, 0, 100], [50, 0, 50], 
 
 # LoopEnd / default LoopTime from NewLedTypeDto.GetDefaultConfig
 MODE_DEFAULTS = {
-    1: {"table": 0, "loop_end": 5, "loop_time": 15},   # Flow / streamlined
-    2: {"table": 1, "loop_end": 9, "loop_time": 15},   # Breathing
-    3: {"table": 2, "loop_end": 1, "loop_time": 15},   # Gradient (2-color fade)
-    4: {"table": 3, "loop_end": 1, "loop_time": 15},   # Feedback
-    5: {"table": 4, "loop_end": 0, "loop_time": 15},   # Steady
-    6: {"table": 5, "loop_end": 0, "loop_time": 15},   # Close / off
-    0: {"table": 5, "loop_end": 0, "loop_time": 15},   # treat 0 as off
+    1: {"table": 0, "loop_end": 5, "loop_time": 15},  # Flow / streamlined
+    2: {"table": 1, "loop_end": 9, "loop_time": 15},  # Breathing
+    3: {"table": 2, "loop_end": 1, "loop_time": 15},  # Gradient (2-color fade)
+    4: {"table": 3, "loop_end": 1, "loop_time": 15},  # Feedback
+    5: {"table": 4, "loop_end": 0, "loop_time": 15},  # Steady
+    6: {"table": 5, "loop_end": 0, "loop_time": 15},  # Close / off
+    0: {"table": 5, "loop_end": 0, "loop_time": 15},  # treat 0 as off
 }

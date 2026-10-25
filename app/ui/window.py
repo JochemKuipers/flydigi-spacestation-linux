@@ -133,7 +133,9 @@ class MainWindow(QMainWindow):
 
         sb = QStatusBar()
         self.setStatusBar(sb)
-        sb.showMessage("Start the driver if nothing connects: python3 driver/flydigi_vader4d.py")
+        sb.showMessage(
+            "Start the driver if nothing connects: python3 driver/flydigi_vader4d.py"
+        )
 
         self._bridge = DaemonBridge()
         self._bridge.status.connect(self._on_status)
@@ -142,7 +144,7 @@ class MainWindow(QMainWindow):
         self._bridge.error.connect(lambda m: QMessageBox.warning(self, "Error", m))
         self._bridge.start()
 
-    def closeEvent(self, event) -> None:  # noqa: N802
+    def closeEvent(self, event) -> None:
         self._bridge.stop()
         super().closeEvent(event)
 
@@ -278,16 +280,24 @@ class MainWindow(QMainWindow):
         form.addRow("Animation speed", self.led_speed)
         form.addRow("Color", self.color_btn)
         form.addRow(self.color_hint)
-        hint = QLabel("Preview animates the mode. USB / dongle required to write to the pad.")
+        hint = QLabel(
+            "Preview animates the mode. USB / dongle required to write to the pad."
+        )
         hint.setObjectName("Muted")
         hint.setWordWrap(True)
         form.addRow(hint)
         cols.addWidget(card, stretch=2)
         lay.addLayout(cols)
 
-        self.led_mode.currentIndexChanged.connect(lambda _i: self._led_schedule(preview_now=True))
-        self.led_brightness.valueChanged.connect(lambda _v: self._led_schedule(preview_now=False))
-        self.led_speed.valueChanged.connect(lambda _v: self._led_schedule(preview_now=False))
+        self.led_mode.currentIndexChanged.connect(
+            lambda _i: self._led_schedule(preview_now=True)
+        )
+        self.led_brightness.valueChanged.connect(
+            lambda _v: self._led_schedule(preview_now=False)
+        )
+        self.led_speed.valueChanged.connect(
+            lambda _v: self._led_schedule(preview_now=False)
+        )
         self._update_color_btn()
         self._push_led_preview()
         return w
@@ -314,7 +324,14 @@ class MainWindow(QMainWindow):
         self.dz_rt = QSpinBox()
         self.curve_end_ls = QSpinBox()
         self.curve_end_rs = QSpinBox()
-        for s in (self.dz_left, self.dz_right, self.dz_lt, self.dz_rt, self.curve_end_ls, self.curve_end_rs):
+        for s in (
+            self.dz_left,
+            self.dz_right,
+            self.dz_lt,
+            self.dz_rt,
+            self.curve_end_ls,
+            self.curve_end_rs,
+        ):
             s.setRange(0, 100)
         self.curve_end_ls.setValue(100)
         self.curve_end_rs.setValue(100)
@@ -407,13 +424,6 @@ class MainWindow(QMainWindow):
         row.addWidget(reset)
         row.addStretch()
         lay.addLayout(row)
-        tip = QLabel(
-            "Hotspots match Space Station 4.2.2.3 device_config_f4. "
-            "Rapid fire uses the firmware turbo fields on each key slot."
-        )
-        tip.setObjectName("Muted")
-        tip.setWordWrap(True)
-        lay.addWidget(tip)
         body = QHBoxLayout()
         self.map_pad = LivePadView()
         self.map_pad.setMinimumWidth(420)
@@ -481,7 +491,9 @@ class MainWindow(QMainWindow):
         try:
             resp = self._bridge.call(cmd, **kwargs)
         except OSError as exc:
-            QMessageBox.warning(self, "Not connected", f"Cannot reach the driver:\n{exc}")
+            QMessageBox.warning(
+                self, "Not connected", f"Cannot reach the driver:\n{exc}"
+            )
             return {"ok": False, "error": str(exc)}
         if not resp.get("ok"):
             QMessageBox.warning(self, "That didn’t work", resp.get("error", "unknown"))
@@ -514,7 +526,9 @@ class MainWindow(QMainWindow):
         self.fw_catalog_label.setText(f"Latest online: {ver}")
         pad = self._fw_pad_version
         if pad and pad == ver:
-            self.fw_status.setText("You’re on the latest version. You can still reinstall it.")
+            self.fw_status.setText(
+                "You’re on the latest version. You can still reinstall it."
+            )
         elif pad:
             self.fw_status.setText(f"Update available: {pad} → {ver}")
         else:
@@ -538,7 +552,9 @@ class MainWindow(QMainWindow):
             )
             return
         if not DEFAULT_BIN.is_file():
-            QMessageBox.warning(self, "Missing file", f"No update file at:\n{DEFAULT_BIN}")
+            QMessageBox.warning(
+                self, "Missing file", f"No update file at:\n{DEFAULT_BIN}"
+            )
             return
         pad = self._fw_pad_version
         reply = QMessageBox.warning(
@@ -592,16 +608,16 @@ class MainWindow(QMainWindow):
             brightness=self.led_brightness.value(),
             speed=self.led_speed.value(),
         )
-        kwargs = dict(
-            mode=mode,
-            color=self._color,
-            brightness=self.led_brightness.value(),
-            speed=self.led_speed.value(),
-            groups=cfg.groups,
-            loop_start=cfg.loop_start,
-            loop_end=cfg.loop_end,
-            loop_time=cfg.loop_time,
-        )
+        kwargs = {
+            "mode": mode,
+            "color": self._color,
+            "brightness": self.led_brightness.value(),
+            "speed": self.led_speed.value(),
+            "groups": cfg.groups,
+            "loop_start": cfg.loop_start,
+            "loop_end": cfg.loop_end,
+            "loop_time": cfg.loop_time,
+        }
         self.led_preview.set_led_state(**kwargs)
         # Overview pad: update mode/color without forcing a rebuild storm when hidden
         if self.live_pad.isVisible():
@@ -616,7 +632,9 @@ class MainWindow(QMainWindow):
             self.color_btn.setText("—")
             self.color_btn.setStyleSheet("")
         elif mode == 1:
-            self.color_hint.setText("Flow uses Space Station’s rainbow chase — color picker unused.")
+            self.color_hint.setText(
+                "Flow uses Space Station’s rainbow chase — color picker unused."
+            )
             self.color_btn.setText("rainbow")
             self.color_btn.setStyleSheet(
                 "QPushButton#ColorSwatch {"
@@ -625,7 +643,9 @@ class MainWindow(QMainWindow):
                 "stop:0.6 #00aaff, stop:0.8 #6644ff, stop:1 #ff0040); color:#fff; }"
             )
         elif mode == 3:
-            self.color_hint.setText("Gradient fades between your color and its complement.")
+            self.color_hint.setText(
+                "Gradient fades between your color and its complement."
+            )
             fg = "#000" if self._color.lightness() > 140 else "#fff"
             self.color_btn.setStyleSheet(
                 f"QPushButton#ColorSwatch {{ background:{self._color.name()}; color:{fg}; }}"
@@ -682,7 +702,9 @@ class MainWindow(QMainWindow):
             return
         if not resp.get("ok"):
             if not quiet:
-                QMessageBox.warning(self, "That didn’t work", resp.get("error", "unknown"))
+                QMessageBox.warning(
+                    self, "That didn’t work", resp.get("error", "unknown")
+                )
             return
         led = resp["led"]
         idx = self.led_mode.findData(led["mode"])
@@ -702,17 +724,17 @@ class MainWindow(QMainWindow):
         if any(c):
             self._color = QColor(int(c[0]), int(c[1]), int(c[2]))
         self._update_color_btn()
-        kwargs = dict(
-            mode=int(led["mode"]),
-            color=self._color,
-            brightness=int(led["brightness"]),
-            speed=self.led_speed.value(),
-            groups=led.get("groups"),
-            loop_start=led.get("loop_start"),
-            loop_end=led.get("loop_end"),
-            loop_time=led.get("loop_time"),
-            colors=led.get("colors") or [],
-        )
+        kwargs = {
+            "mode": int(led["mode"]),
+            "color": self._color,
+            "brightness": int(led["brightness"]),
+            "speed": self.led_speed.value(),
+            "groups": led.get("groups"),
+            "loop_start": led.get("loop_start"),
+            "loop_end": led.get("loop_end"),
+            "loop_time": led.get("loop_time"),
+            "colors": led.get("colors") or [],
+        }
         self.led_preview.set_led_state(**kwargs)
         self.live_pad.set_led_state(**kwargs)
 
@@ -758,7 +780,9 @@ class MainWindow(QMainWindow):
                 "Playing over Bluetooth. Plug in USB or the dongle to change lighting and button maps."
             )
         else:
-            self.detail_note.setText("Ready for lighting, rumble, button maps, and firmware updates.")
+            self.detail_note.setText(
+                "Ready for lighting, rumble, button maps, and firmware updates."
+            )
             # Pull LED once on USB connect so the preview matches the pad.
             QTimer.singleShot(0, self._sync_led_from_pad)
 
@@ -821,7 +845,9 @@ class MainWindow(QMainWindow):
                     combo.addItem(KEY_LABELS[i], i)
             idx = combo.findData(k["map_id"])
             if idx < 0:
-                combo.addItem(key_label(int(k["map_id"]), str(k["map_id"])), k["map_id"])
+                combo.addItem(
+                    key_label(int(k["map_id"]), str(k["map_id"])), k["map_id"]
+                )
                 idx = combo.count() - 1
             combo.setCurrentIndex(max(0, idx))
             self.key_table.setCellWidget(row, 1, combo)
@@ -848,7 +874,9 @@ class MainWindow(QMainWindow):
         self.key_table.resizeColumnsToContents()
         self._load_sticks_from_config()
         self._load_motor_from_config()
-        self.btn_status.setText("Loaded from the controller. Edit rows, then Save to pad.")
+        self.btn_status.setText(
+            "Loaded from the controller. Edit rows, then Save to pad."
+        )
 
     def _load_sticks_from_config(self) -> None:
         if not self._config:
@@ -916,7 +944,10 @@ class MainWindow(QMainWindow):
         if self._rpc(
             "config_set_sticks",
             left_stick={"zero": self.dz_left.value(), "end": self.curve_end_ls.value()},
-            right_stick={"zero": self.dz_right.value(), "end": self.curve_end_rs.value()},
+            right_stick={
+                "zero": self.dz_right.value(),
+                "end": self.curve_end_rs.value(),
+            },
             left_trigger={"zero": self.dz_lt.value()},
             right_trigger={"zero": self.dz_rt.value()},
         ).get("ok"):

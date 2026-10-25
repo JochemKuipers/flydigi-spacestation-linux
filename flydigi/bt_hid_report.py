@@ -74,10 +74,29 @@ def parse_bt_hid_report(data: bytes) -> BtHidReport | None:
     btn_bits = (packed >> 4) & 0xFFF
     hx, hy = _hat_xy(hat)
 
-    buttons = {n: False for n in (
-        "a", "b", "x", "y", "lb", "rb", "select", "start", "guide",
-        "ls", "rs", "c", "z", "m1", "m2", "m3", "m4", "fn",
-    )}
+    buttons = {
+        n: False
+        for n in (
+            "a",
+            "b",
+            "x",
+            "y",
+            "lb",
+            "rb",
+            "select",
+            "start",
+            "guide",
+            "ls",
+            "rs",
+            "c",
+            "z",
+            "m1",
+            "m2",
+            "m3",
+            "m4",
+            "fn",
+        )
+    }
     for i, name in enumerate(btn_names_by_bit()):
         if name and (btn_bits & (1 << i)):
             buttons[name] = True

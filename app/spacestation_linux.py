@@ -10,9 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtWidgets import QApplication
 
-from app.ui import MainWindow, apply_theme  # noqa: E402
+from app.ui import MainWindow, apply_theme
 
 
 def main() -> int:

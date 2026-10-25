@@ -11,7 +11,7 @@ import os
 import socket
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 SOCKET_NAME = "flydigi-vader4d.sock"
 
@@ -43,7 +43,7 @@ class DaemonClient:
                 pass
             self._sock = None
 
-    def __enter__(self) -> DaemonClient:
+    def __enter__(self) -> Self:
         self.connect()
         return self
 

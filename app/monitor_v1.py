@@ -6,7 +6,6 @@ from __future__ import annotations
 import os
 import select
 import sys
-import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,7 +18,9 @@ from flydigi.v1_report import parse_v1_report
 def main() -> int:
     iface = find_input_interface()
     if iface is None:
-        print("No Vader 4 Pro IF2 hidraw found (need DInput 04b4:2412)", file=sys.stderr)
+        print(
+            "No Vader 4 Pro IF2 hidraw found (need DInput 04b4:2412)", file=sys.stderr
+        )
         return 1
     print(f"Reading {iface.hidraw} (USB iface {iface.interface_number})")
     fd = os.open(iface.hidraw, os.O_RDONLY | os.O_NONBLOCK)

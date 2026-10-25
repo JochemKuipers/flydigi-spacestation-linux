@@ -35,11 +35,24 @@ class BtEvdevState:
     def __post_init__(self) -> None:
         if self.buttons is None:
             self.buttons = {
-                "a": False, "b": False, "x": False, "y": False,
-                "lb": False, "rb": False, "select": False, "start": False,
-                "guide": False, "ls": False, "rs": False,
-                "c": False, "z": False, "m1": False, "m2": False,
-                "m3": False, "m4": False, "fn": False,
+                "a": False,
+                "b": False,
+                "x": False,
+                "y": False,
+                "lb": False,
+                "rb": False,
+                "select": False,
+                "start": False,
+                "guide": False,
+                "ls": False,
+                "rs": False,
+                "c": False,
+                "z": False,
+                "m1": False,
+                "m2": False,
+                "m3": False,
+                "m4": False,
+                "fn": False,
             }
 
 

@@ -91,7 +91,9 @@ def list_vader4_interfaces(
             elif line.startswith("HID_NAME="):
                 name = line.split("=", 1)[1]
         id_hit = any(nv in up and np in up for nv, np in id_needles)
-        name_hit = match_name and ("FLYDIGI" in name.upper()) and ("VADER" in name.upper())
+        name_hit = (
+            match_name and ("FLYDIGI" in name.upper()) and ("VADER" in name.upper())
+        )
         if not id_hit and not name_hit:
             continue
         device = (entry / "device").resolve()

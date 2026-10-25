@@ -25,18 +25,35 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evdev import InputDevice, ecodes, list_devices  # noqa: E402
+from typing import Self
+
+from evdev import InputDevice, ecodes, list_devices
 
 CONTROLS = [
-    "a", "b", "x", "y",
-    "lb", "rb",
-    "select", "start",
-    "ls", "rs",
-    "lt", "rt",
-    "hat_up", "hat_right", "hat_down", "hat_left",
-    "c", "z",
-    "m1", "m2", "m3", "m4",
-    "guide", "fn",
+    "a",
+    "b",
+    "x",
+    "y",
+    "lb",
+    "rb",
+    "select",
+    "start",
+    "ls",
+    "rs",
+    "lt",
+    "rt",
+    "hat_up",
+    "hat_right",
+    "hat_down",
+    "hat_left",
+    "c",
+    "z",
+    "m1",
+    "m2",
+    "m3",
+    "m4",
+    "guide",
+    "fn",
 ]
 
 OUT_DEFAULT = ROOT / "captures" / "bt-button-map.json"
@@ -80,7 +97,7 @@ class RawStdin:
         self.fd = sys.stdin.fileno()
         self._old = termios.tcgetattr(self.fd)
 
-    def __enter__(self) -> RawStdin:
+    def __enter__(self) -> Self:
         tty.setcbreak(self.fd)
         return self
 
@@ -185,9 +202,9 @@ def derive(mapping: dict) -> dict:
     for name, s in mapping.items():
         bb = int(s.get("hid_btn_bits") or 0)
         cb = int(s.get("hid_cons_bits") or 0)
-        if bb and bin(bb).count("1") == 1:
+        if bb and (bb).bit_count() == 1:
             btn_bit[name] = bb.bit_length() - 1
-        if cb and bin(cb).count("1") == 1:
+        if cb and (cb).bit_count() == 1:
             cons_bit[name] = cb.bit_length() - 1
         if s.get("ev_keys"):
             top = max(s["ev_keys"].items(), key=lambda kv: kv[1])[0]

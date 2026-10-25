@@ -211,11 +211,11 @@ class LivePadView(QWidget):
         elif (not needs or not self.isVisible()) and self._anim.isActive():
             self._anim.stop()
 
-    def showEvent(self, event) -> None:  # noqa: N802
+    def showEvent(self, event) -> None:
         super().showEvent(event)
         self._sync_anim_timer()
 
-    def hideEvent(self, event) -> None:  # noqa: N802
+    def hideEvent(self, event) -> None:
         super().hideEvent(event)
         if self._anim.isActive():
             self._anim.stop()
@@ -239,7 +239,11 @@ class LivePadView(QWidget):
         self._rt = int(rep.get("rt", 0))
         self._hat = (int(rep.get("hat_x", 0)), int(rep.get("hat_y", 0)))
         btns = rep.get("buttons") or {}
-        self._buttons = {str(k).lower() for k, v in btns.items() if v} if isinstance(btns, dict) else set()
+        self._buttons = (
+            {str(k).lower() for k, v in btns.items() if v}
+            if isinstance(btns, dict)
+            else set()
+        )
         hx, hy = self._hat
         if hy < 0:
             self._buttons.add("hat_up")
@@ -267,7 +271,9 @@ class LivePadView(QWidget):
     def _map_vb(self, x: float, y: float, dest: QRectF) -> QPointF:
         """Map wireframe viewBox px → widget (1:1 with SS4 absolute hotspot layout)."""
         vw, vh = self._vb()
-        return QPointF(dest.left() + x / vw * dest.width(), dest.top() + y / vh * dest.height())
+        return QPointF(
+            dest.left() + x / vw * dest.width(), dest.top() + y / vh * dest.height()
+        )
 
     def _r(self, dest: QRectF, n: float) -> float:
         return n * dest.width() / self._vb()[0]
@@ -287,7 +293,7 @@ class LivePadView(QWidget):
         self._body_scaled_key = key
         return self._body_scaled
 
-    def paintEvent(self, _event) -> None:  # noqa: N802
+    def paintEvent(self, _event) -> None:
         p = QPainter(self)
         p.fillRect(self.rect(), QColor("#12141a"))
         dest = self._dest()
@@ -296,7 +302,9 @@ class LivePadView(QWidget):
             p.drawPixmap(dest.topLeft(), body)
         else:
             p.setPen(QColor("#aaa"))
-            p.drawText(dest, int(Qt.AlignmentFlag.AlignCenter), "Missing SS4 F4 wireframe")
+            p.drawText(
+                dest, int(Qt.AlignmentFlag.AlignCenter), "Missing SS4 F4 wireframe"
+            )
 
         p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         p.setClipRect(dest)
@@ -311,7 +319,9 @@ class LivePadView(QWidget):
             f = QFont(self.font())
             f.setPointSize(12)
             p.setFont(f)
-            p.drawText(dest, int(Qt.AlignmentFlag.AlignCenter), "Connect your Vader 4 Pro")
+            p.drawText(
+                dest, int(Qt.AlignmentFlag.AlignCenter), "Connect your Vader 4 Pro"
+            )
 
     def _led_strip_points(self, dest: QRectF, steps: int = 36) -> list[QPointF]:
         """Dense polyline along the V — continuous light bar, not discrete LEDs."""
@@ -328,10 +338,14 @@ class LivePadView(QWidget):
         pts: list[QPointF] = []
         for i in range(half + 1):
             t = i / half
-            pts.append(QPointF(a.x() + (b.x() - a.x()) * t, a.y() + (b.y() - a.y()) * t))
+            pts.append(
+                QPointF(a.x() + (b.x() - a.x()) * t, a.y() + (b.y() - a.y()) * t)
+            )
         for i in range(1, half + 1):
             t = i / half
-            pts.append(QPointF(b.x() + (c.x() - b.x()) * t, b.y() + (c.y() - b.y()) * t))
+            pts.append(
+                QPointF(b.x() + (c.x() - b.x()) * t, b.y() + (c.y() - b.y()) * t)
+            )
         self._led_pts = pts
         self._led_pts_key = key
         return pts
@@ -381,7 +395,8 @@ class LivePadView(QWidget):
             elif self._led_mode == LED_FEEDBACK:
                 energy = min(
                     1.0,
-                    (abs(self._lx) + abs(self._ly) + abs(self._rx) + abs(self._ry)) / 60000.0
+                    (abs(self._lx) + abs(self._ly) + abs(self._rx) + abs(self._ry))
+                    / 60000.0
                     + (0.35 if self._buttons else 0.0)
                     + self._lt / 400.0
                     + self._rt / 400.0,
@@ -432,14 +447,19 @@ class LivePadView(QWidget):
             rw = self._r(dest, w * 0.5)
             rh = self._r(dest, ht * 0.5)
             active = self._hotspot_active(h)
-            selected = self._selected_id is not None and int(h.get("id", -1)) == self._selected_id
+            selected = (
+                self._selected_id is not None
+                and int(h.get("id", -1)) == self._selected_id
+            )
             name = str(h.get("name") or "")
 
             if name in ("JsLeft", "JsRight"):
                 ax = self._lx if name == "JsLeft" else self._rx
                 ay = self._ly if name == "JsLeft" else self._ry
                 travel = min(rw, rh) * 0.55
-                c = QPointF(c.x() + _norm_axis(ax) * travel, c.y() + _norm_axis(ay) * travel)
+                c = QPointF(
+                    c.x() + _norm_axis(ax) * travel, c.y() + _norm_axis(ay) * travel
+                )
 
             p.save()
             rot = float(h.get("rotation") or 0)
@@ -455,7 +475,9 @@ class LivePadView(QWidget):
                 p.setBrush(QColor(255, 255, 255, 40))
             elif active and not analog:
                 p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(QColor(self._led.red(), self._led.green(), self._led.blue(), 200))
+                p.setBrush(
+                    QColor(self._led.red(), self._led.green(), self._led.blue(), 200)
+                )
             else:
                 p.setPen(QPen(QColor(255, 255, 255, 35), 1))
                 p.setBrush(Qt.BrushStyle.NoBrush)
@@ -504,7 +526,7 @@ class LivePadView(QWidget):
         p.drawRoundedRect(fill, 4, 4)
         p.setClipping(False)
 
-    def mousePressEvent(self, event) -> None:  # noqa: N802
+    def mousePressEvent(self, event) -> None:
         if self._face != "front" or event.button() != Qt.MouseButton.LeftButton:
             return
         dest = self._dest()
@@ -542,7 +564,7 @@ class StatChip(QWidget):
         self._value = value
         self.update()
 
-    def paintEvent(self, _event) -> None:  # noqa: N802
+    def paintEvent(self, _event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(0.5, 0.5, self.width() - 1, self.height() - 1)
@@ -553,7 +575,11 @@ class StatChip(QWidget):
         f = QFont(self.font())
         f.setPointSize(10)
         p.setFont(f)
-        p.drawText(QRectF(14, 12, self.width() - 28, 18), int(Qt.AlignmentFlag.AlignLeft), self._label)
+        p.drawText(
+            QRectF(14, 12, self.width() - 28, 18),
+            int(Qt.AlignmentFlag.AlignLeft),
+            self._label,
+        )
         p.setPen(QColor("#f2f0eb"))
         f.setPointSize(16)
         f.setBold(True)
@@ -563,5 +589,3 @@ class StatChip(QWidget):
             int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
             self._value,
         )
-
-

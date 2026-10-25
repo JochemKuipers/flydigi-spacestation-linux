@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from flydigi.ipc import DaemonClient, default_socket_path  # noqa: E402
+from flydigi.ipc import DaemonClient, default_socket_path
 
 
 def main() -> int:
@@ -33,7 +33,9 @@ def main() -> int:
     )
     sub.add_parser("led-get")
     led = sub.add_parser("led-set")
-    led.add_argument("--mode", type=int, default=5, help="0=off 1=stream 2=breath 5=steady")
+    led.add_argument(
+        "--mode", type=int, default=5, help="0=off 1=stream 2=breath 5=steady"
+    )
     led.add_argument("--r", type=int, default=0)
     led.add_argument("--g", type=int, default=255)
     led.add_argument("--b", type=int, default=0)

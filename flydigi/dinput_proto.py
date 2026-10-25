@@ -10,12 +10,12 @@ import math
 import os
 import select
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
 from .enumerate import find_input_interface
-from .v1_report import PACKET_LEN, parse_v1_report
+from .v1_report import parse_v1_report
 
 CMD_GET_DONGLE_VERSION = 17
 CMD_READ_LED_CONFIG = 229
@@ -132,7 +132,9 @@ def decode_led_config(data: bytes) -> LedConfig:
     return cfg
 
 
-def _groups_from_ss_table(table_idx: int, n: int = 5) -> list[list[tuple[int, int, int]]]:
+def _groups_from_ss_table(
+    table_idx: int, n: int = 5
+) -> list[list[tuple[int, int, int]]]:
     """Copy official NewLedTypeDto.ledUnits[mode][led][frame][rgb]."""
     from flydigi.ss4_led_tables import LED_UNITS
 
@@ -156,7 +158,9 @@ def _zero_frames() -> list[tuple[int, int, int]]:
     return [(0, 0, 0)] * 10
 
 
-def _create_led_units(colors: list[tuple[int, int, int]], dimming: bool) -> list[tuple[int, int, int]]:
+def _create_led_units(
+    colors: list[tuple[int, int, int]], dimming: bool
+) -> list[tuple[int, int, int]]:
     """NewLedTypeDto.CreateLedUnits — breath: color on even frames, black on odd."""
     out: list[tuple[int, int, int]] = []
     for i in range(10):
@@ -168,7 +172,9 @@ def _create_led_units(colors: list[tuple[int, int, int]], dimming: bool) -> list
     return out
 
 
-def _create_led_units2(colors: list[tuple[int, int, int]], dimming: bool) -> list[tuple[int, int, int]]:
+def _create_led_units2(
+    colors: list[tuple[int, int, int]], dimming: bool
+) -> list[tuple[int, int, int]]:
     """NewLedTypeDto.CreateLedUnits2 — gradient: first two frames are the two colors."""
     out: list[tuple[int, int, int]] = []
     for i in range(10):
@@ -179,13 +185,17 @@ def _create_led_units2(colors: list[tuple[int, int, int]], dimming: bool) -> lis
     return out
 
 
-def _create_led_units3(colors: list[tuple[int, int, int]], dimming: bool) -> list[tuple[int, int, int]]:
+def _create_led_units3(
+    colors: list[tuple[int, int, int]], dimming: bool
+) -> list[tuple[int, int, int]]:
     """NewLedTypeDto.CreateLedUnits3 — feedback/steady: only frame 0 lit."""
     c = colors[0] if colors else (0, 0, 0)
     return [(_dim(c) if dimming else c)] + [(0, 0, 0)] * 9
 
 
-def _breath_groups_custom(color: tuple[int, int, int]) -> list[list[tuple[int, int, int]]]:
+def _breath_groups_custom(
+    color: tuple[int, int, int],
+) -> list[list[tuple[int, int, int]]]:
     """Match GetLedGroupListByCustom Id=2 (5× same color)."""
     colors = [color] * 5
     return [
@@ -197,13 +207,17 @@ def _breath_groups_custom(color: tuple[int, int, int]) -> list[list[tuple[int, i
     ]
 
 
-def _gradient_groups_custom(c1: tuple[int, int, int], c2: tuple[int, int, int]) -> list[list[tuple[int, int, int]]]:
+def _gradient_groups_custom(
+    c1: tuple[int, int, int], c2: tuple[int, int, int]
+) -> list[list[tuple[int, int, int]]]:
     """Match GetLedGroupListByCustom Id=3."""
     pair = [c1, c2]
     return [_create_led_units2(pair, False) for _ in range(5)]
 
 
-def _feedback_groups_custom(color: tuple[int, int, int]) -> list[list[tuple[int, int, int]]]:
+def _feedback_groups_custom(
+    color: tuple[int, int, int],
+) -> list[list[tuple[int, int, int]]]:
     """Match GetLedGroupListByCustom Id=4."""
     colors = [color]
     return [
@@ -215,7 +229,9 @@ def _feedback_groups_custom(color: tuple[int, int, int]) -> list[list[tuple[int,
     ]
 
 
-def _steady_groups_custom(color: tuple[int, int, int]) -> list[list[tuple[int, int, int]]]:
+def _steady_groups_custom(
+    color: tuple[int, int, int],
+) -> list[list[tuple[int, int, int]]]:
     """Match GetLedGroupListByCustom Id=5."""
     colors = [color]
     return [_create_led_units3(colors, False) for _ in range(5)]
@@ -318,7 +334,10 @@ def _split_parcels(header: bytes, inner_cmd: int, data: bytes) -> list[bytes]:
         out_stream.append(160)
         out_stream.append(i & 0xFF)
     chunk_size = MAX_PARCEL + 4
-    return [bytes(out_stream[k : k + chunk_size]) for k in range(0, len(out_stream), chunk_size)]
+    return [
+        bytes(out_stream[k : k + chunk_size])
+        for k in range(0, len(out_stream), chunk_size)
+    ]
 
 
 def led_config_parcels(data: bytes, config_id: int = 0) -> list[bytes]:
@@ -329,7 +348,9 @@ def led_config_parcels(data: bytes, config_id: int = 0) -> list[bytes]:
 
 def gamepad_config_parcels(data: bytes, config_id: int = 0) -> list[bytes]:
     parcel_count = max(1, math.ceil(len(data) / MAX_PARCEL))
-    header = bytes((5, CMD_WRITE_CONFIG_START, parcel_count & 0xFF, 160, config_id & 0xFF))
+    header = bytes(
+        (5, CMD_WRITE_CONFIG_START, parcel_count & 0xFF, 160, config_id & 0xFF)
+    )
     return _split_parcels(header, 34, data)
 
 
@@ -475,7 +496,11 @@ class DInputDevice:
                 self._cfg_data = bytes(buf)
                 return ("config", self._cfg_data)
 
-        if len(data) > 15 and data[15] in (CMD_WRITE_CONFIG_START, CMD_WRITE_LED_START, 51):
+        if len(data) > 15 and data[15] in (
+            CMD_WRITE_CONFIG_START,
+            CMD_WRITE_LED_START,
+            51,
+        ):
             self._acks.append(int(data[3]))
             return ("ack", data[3])
 
