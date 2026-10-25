@@ -40,7 +40,7 @@ Responses are non-`04 FE` packets; many put the echoed command ID in byte `[15]`
 | 17 | Dongle version | response `[4, 17, FW_L, FW_H]` (**C**) |
 | 229 | Read LED config | parcels; byte `[15]==229`, chunk idx in `[3]`, 10 data bytes `[5:15]`; **49** chunks (**C**/**O**) |
 | 231 | Write LED start | followed by inner parcels cmd **51** (**C**) |
-| 234 | Write gamepad config start | inner parcels cmd **34** (**C**) |
+| 234 | Write gamepad config start | inner parcels cmd **34**; pad ACKs each parcel (`[15]==234`, idx in `[3]`) — fire-and-forget drops writes (**C**/flydigictl) |
 | 235 | Read gamepad config | **52** chunks × 10 → 520 bytes (**O**) |
 | 236 | Get device info | **O**: device_id=`[3]`, mac=`[5:9]`, FW_L/H=`[9]/[10]`, battery=`[11]`, cpu=`[12]`, conn=`[13]`, motion=`[14]`, cmd=`[15]` |
 

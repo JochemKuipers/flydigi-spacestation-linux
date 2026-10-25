@@ -1,3 +1,10 @@
+flydigi-vader (0.1.2-1) unstable; urgency=medium
+
+  * ACK-gated gamepad config writes so remaps/feel actually persist across
+    reconnect (matches Space Station / flydigictl).
+
+ -- jochem-kuipers <jochem@localhost>  Sun, 25 Oct 2026 13:05:00 +0100
+
 flydigi-vader (0.1.1-1) unstable; urgency=medium
 
   * Move flydigi-ctl into flydigi.ctl; driver no longer ships site-packages/app

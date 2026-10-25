@@ -85,7 +85,12 @@ class KeyMap:
 
     @property
     def is_remapped(self) -> bool:
-        return self.map_id not in (255, self.key_id) and self.map_id < 32
+        # 255 = identity; 254 = keyboard/macro (host); 32 = SS unused filler.
+        if self.map_id in (255, self.key_id):
+            return False
+        if self.map_id in (254, 32):
+            return True
+        return 0 <= self.map_id < 32
 
 
 @dataclass

@@ -455,7 +455,7 @@ class Daemon:
             brightness=int(msg.get("brightness", 80)),
             speed=int(msg.get("speed", 50)),
         )
-        self._require_dev().write_led_config(cfg)
+        self._require_dev().write_led_config(cfg, on_report=self._on_sideband)
         return {"ok": True, "led": _led_dict(cfg)}
 
     def _fetch_config(self, *, refresh: bool = False):
@@ -488,13 +488,12 @@ class Daemon:
         return decode_gamepad_config(self._cfg_raw)
 
     def _write_config(self, cfg) -> None:
-        from flydigi.dinput_proto import gamepad_config_parcels
-
         data = encode_gamepad_config(cfg)
+        # Only update the cache after the pad ACKs every parcel — otherwise a
+        # reconnect reloads the old Windows/SS flash mapping and looks like
+        # "Save didn't stick".
+        self._require_dev().write_gamepad_config(data, on_report=self._on_sideband)
         self._cfg_raw = data
-        for chunk in gamepad_config_parcels(data, 0):
-            self._require_dev().write_raw(chunk)
-            time.sleep(0.02)
 
     def _cmd_config_get(self, *, refresh: bool = False) -> dict[str, Any]:
         from flydigi.ss4_f4 import ss4_name_for_key_id
@@ -881,7 +880,13 @@ def KEY_NAMES_SAFE(map_id: int) -> str:
 
     if map_id == 255:
         return "(native)"
-    if 0 <= map_id < len(KEY_NAMES):
+    # Space Station stores keyboard/macro targets as 254 (host-side replay).
+    if map_id == 254:
+        return "(keyboard/macro)"
+    # SS key-priority filler / unused slot sentinel often shows up as "Button 32".
+    if map_id == 32:
+        return "(unmapped/32)"
+    if 0 <= map_id < len(KEY_NAMES) and KEY_NAMES[map_id] != "?":
         return KEY_NAMES[map_id]
     return f"#{map_id}"
 

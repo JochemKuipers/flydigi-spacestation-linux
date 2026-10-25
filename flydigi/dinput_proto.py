@@ -431,12 +431,70 @@ class DInputDevice:
         self._cfg_data = None
         self.send_command(CMD_READ_CONFIG, cid)
 
-    def write_led_config(self, cfg: LedConfig, config_id: int | None = None) -> None:
+    def write_led_config(
+        self,
+        cfg: LedConfig,
+        config_id: int | None = None,
+        *,
+        on_report: Callable[[object], None] | None = None,
+    ) -> None:
         cid = self._config_id if config_id is None else config_id
         data = encode_led_config(cfg)
-        for chunk in led_config_parcels(data, cid):
-            self.write_raw(chunk)
-            time.sleep(0.02)
+        self.write_parcels(
+            led_config_parcels(data, cid),
+            on_report=on_report,
+        )
+
+    def write_gamepad_config(
+        self,
+        data: bytes,
+        config_id: int | None = None,
+        *,
+        on_report: Callable[[object], None] | None = None,
+    ) -> None:
+        """Write the onboard profile blob, waiting for per-parcel ACKs.
+
+        Space Station / flydigictl gate each parcel on an ACK. Fire-and-forget
+        writes look successful in our cache but the pad keeps the previous flash
+        mapping (e.g. a Windows SS remap) across reconnect.
+        """
+        cid = self._config_id if config_id is None else config_id
+        self.write_parcels(
+            gamepad_config_parcels(data, cid),
+            on_report=on_report,
+        )
+
+    def write_parcels(
+        self,
+        chunks: list[bytes],
+        *,
+        max_retries: int = 3,
+        chunk_timeout: float = 3.0,
+        on_report: Callable[[object], None] | None = None,
+    ) -> None:
+        """Send parcelized HID config chunks with ACK + retry (flydigictl-style)."""
+        self._acks.clear()
+        for i, chunk in enumerate(chunks):
+            ok = False
+            for _attempt in range(max_retries):
+                self.write_raw(chunk)
+                deadline = time.monotonic() + chunk_timeout
+                while time.monotonic() < deadline:
+                    msg = self.pump(0.05)
+                    if isinstance(msg, tuple) and msg[0] == "ack":
+                        # Same rule as flydigictl ConfigWriter: ack index >= i.
+                        if int(msg[1]) >= i:
+                            ok = True
+                            break
+                        continue
+                    if msg is not None and on_report is not None:
+                        on_report(msg)
+                if ok:
+                    break
+            if not ok:
+                raise TimeoutError(
+                    f"config write ACK timeout at parcel {i}/{len(chunks)}"
+                )
 
     def pump(self, timeout: float = 0.0) -> object | None:
         """Read one packet; return V1Report, DeviceInfo update, or None."""
@@ -496,10 +554,13 @@ class DInputDevice:
                 self._cfg_data = bytes(buf)
                 return ("config", self._cfg_data)
 
+        # Write ACKs: start cmd (234/231) or LED data parcels (51). Config data
+        # parcels use inner cmd 34 — accept those too if the pad echoes them.
         if len(data) > 15 and data[15] in (
             CMD_WRITE_CONFIG_START,
             CMD_WRITE_LED_START,
             51,
+            34,
         ):
             self._acks.append(int(data[3]))
             return ("ack", data[3])
