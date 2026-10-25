@@ -7,8 +7,19 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-# Bundled under the UI package; fall back relative to this file for tests.
-_UI_SS4 = Path(__file__).resolve().parent.parent / "app" / "ui" / "assets" / "ss4"
+
+def _ss4_assets_dir() -> Path:
+    # Prefer UI package assets (source tree or installed wheel).
+    try:
+        from importlib.resources import files
+
+        p = Path(str(files("app.ui") / "assets" / "ss4"))
+        if p.is_dir():
+            return p
+    except (ImportError, TypeError, ModuleNotFoundError, ValueError):
+        pass
+    return Path(__file__).resolve().parent.parent / "app" / "ui" / "assets" / "ss4"
+
 
 # SS4 hotspot name → report / KEY_NAMES style
 SS4_TO_REPORT: dict[str, str] = {
@@ -46,7 +57,7 @@ SS4_TO_REPORT: dict[str, str] = {
 
 @lru_cache(maxsize=1)
 def load_device_config() -> dict[str, Any]:
-    path = _UI_SS4 / "device_config_f4.json"
+    path = assets_dir() / "device_config_f4.json"
     if not path.is_file():
         return {
             "viewBox": {"width": 508, "height": 421},
@@ -67,7 +78,7 @@ def load_device_config() -> dict[str, Any]:
 
 
 def assets_dir() -> Path:
-    return _UI_SS4
+    return _ss4_assets_dir()
 
 
 def hotspot_by_name(name: str) -> dict[str, Any] | None:

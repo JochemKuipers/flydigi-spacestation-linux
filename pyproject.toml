@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flydigi-vader"
+version = "0.1.0"
+description = "Flydigi Vader 4 Pro Linux driver and Vader Companion"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "jochem-kuipers" }]
+dependencies = [
+  "evdev>=1.6",
+]
+keywords = ["flydigi", "vader", "gamepad", "dinput"]
+classifiers = [
+  "Environment :: X11 Applications :: Qt",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: System :: Hardware",
+]
+
+[project.optional-dependencies]
+companion = ["PySide6>=6.5"]
+dev = ["ruff>=0.6"]
+
+[project.scripts]
+flydigi-vader4d = "driver.flydigi_vader4d:main"
+flydigi-ctl = "app.flydigi_ctl:main"
+vader-companion = "app.vader_companion:main"
+
+[project.urls]
+Homepage = "https://origin.cursor.com/jochem-kuipers/flydigi-spacestation-linux"
+
+[tool.setuptools.packages.find]
+include = ["flydigi*", "app*", "driver*"]
+
+[tool.setuptools.package-data]
+flydigi = ["bt_button_map.json"]
+"app.ui" = [
+  "theme.qss",
+  "assets/*.svg",
+  "assets/*.pdf",
+  "assets/ss4/*",
+  "assets/manual/*",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"

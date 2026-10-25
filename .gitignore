@@ -29,6 +29,10 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+packaging/**/*.deb
+packaging/**/*.rpm
+packaging/**/*.AppImage
+*.pkg.tar*
 .ruff_cache/
 
 # IDE / agent

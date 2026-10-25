@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	python3 packaging/stage.py driver --layout dist-packages --out $(CURDIR)/debian/stage-driver
+	python3 packaging/stage.py companion --layout dist-packages --out $(CURDIR)/debian/stage-companion
+
+override_dh_auto_install:
+	mkdir -p debian/flydigi-vader4d debian/vader-companion
+	cp -a debian/stage-driver/. debian/flydigi-vader4d/
+	cp -a debian/stage-companion/. debian/vader-companion/
+
+override_dh_auto_clean:
+	rm -rf debian/stage-driver debian/stage-companion
+	dh_auto_clean

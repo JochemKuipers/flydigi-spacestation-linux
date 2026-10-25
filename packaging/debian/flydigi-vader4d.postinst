@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+  if command -v udevadm >/dev/null 2>&1; then
+    udevadm control --reload-rules || true
+    udevadm trigger || true
+  fi
+  echo "Enable the driver with: systemctl --user enable --now flydigi-vader4d.service"
+fi
+#DEBHELPER#

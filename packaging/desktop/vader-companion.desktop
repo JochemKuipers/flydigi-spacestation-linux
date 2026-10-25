@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Vader Companion
+GenericName=Vader 4 Pro companion
+Comment=Configure Flydigi Vader 4 Pro lighting, feel, buttons, and firmware
+Exec=vader-companion
+Icon=vader-companion
+Categories=Utility;Settings;HardwareSettings;
+Terminal=false
+StartupNotify=true
+Keywords=flydigi;vader;gamepad;controller;

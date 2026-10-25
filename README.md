@@ -26,14 +26,25 @@ Native Linux support for the Flydigi Vader 4 Pro **without** Xbox/XInput spoofin
 - Controller in **PC/DInput** mode (blue LED)
 - Dongle or wired USB `04b4:2412` (for config/LED/rumble), and/or BT `d7d7:0041`
 
-## Quick start
+## Packages
+
+Separate packages (AUR / `.deb` / `.rpm`, plus AppImage for the UI):
+
+| Package | Role |
+|---------|------|
+| `flydigi-vader4d` | Driver, `flydigi-ctl`, udev, user systemd unit |
+| `vader-companion` | Qt companion app |
+
+See [packaging/README.md](packaging/README.md) for build recipes.
+
+## Quick start (from source)
 
 ```bash
 # udev + user systemd unit (once)
 ./scripts/install-driver.sh
 
 # Or foreground daemon
-python3 driver/flydigi_vader4d.py
+python3 driver/flydigi_vader4d.py   # or: flydigi-vader4d
 
 # CLI against the daemon socket
 python3 app/flydigi_ctl.py info
@@ -41,7 +52,7 @@ python3 app/flydigi_ctl.py rumble 255 255 --ms 1500
 python3 app/flydigi_ctl.py led-set --r 0 --g 255 --b 0 --brightness 80
 
 # Companion UI
-python3 app/vader_companion.py
+python3 app/vader_companion.py      # or: vader-companion
 
 # Firmware (wired DInput; IF3) — or use the Firmware tab
 python3 scripts/ota-flash.py          # prompts YES

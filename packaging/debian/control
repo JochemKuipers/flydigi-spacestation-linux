@@ -1,0 +1,24 @@
+Source: flydigi-vader
+Section: utils
+Priority: optional
+Maintainer: jochem-kuipers <jochem@localhost>
+Build-Depends: debhelper-compat (= 13), python3, python3-setuptools, dh-python
+Standards-Version: 4.6.2
+Homepage: https://origin.cursor.com/jochem-kuipers/flydigi-spacestation-linux
+Rules-Requires-Root: no
+
+Package: flydigi-vader4d
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3-evdev, udev
+Description: Userspace DInput driver for Flydigi Vader 4 Pro
+ Provides a uinput gamepad and a Unix control socket for the Flydigi
+ Vader 4 Pro over USB / 2.4 GHz dongle (and Bluetooth DInput input).
+ .
+ Installs a user systemd unit (flydigi-vader4d.service) and udev rules.
+
+Package: vader-companion
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3-evdev, python3-pyside6.qtwidgets | python3-pyside6, flydigi-vader4d
+Description: Vader Companion for Flydigi Vader 4 Pro
+ Desktop app to configure lighting, feel, button maps, and firmware for
+ the Flydigi Vader 4 Pro on Linux.

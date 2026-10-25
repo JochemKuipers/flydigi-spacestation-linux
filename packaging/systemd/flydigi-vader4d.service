@@ -1,0 +1,13 @@
+[Unit]
+Description=Flydigi Vader 4 Pro DInput userspace driver
+After=systemd-udevd.service
+Wants=systemd-udevd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/flydigi-vader4d
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

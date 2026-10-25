@@ -26,7 +26,23 @@ ACK_TIMEOUT = 5.0
 PREFLIGHT_TIMEOUT = 2.5
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_BIN = ROOT / "archive/firmware/f4/6.9.3.3/F4_Telink87_Gamepad_6933_1025.bin"
+_FW_NAME = "F4_Telink87_Gamepad_6933_1025.bin"
+_FW_REL = Path("archive/firmware/f4/6.9.3.3") / _FW_NAME
+
+
+def _find_default_bin() -> Path:
+    candidates = [
+        ROOT / _FW_REL,
+        Path("/usr/share/vader-companion/firmware") / _FW_NAME,
+        Path("/usr/share/flydigi-vader/firmware") / _FW_NAME,
+    ]
+    for path in candidates:
+        if path.is_file():
+            return path
+    return candidates[0]
+
+
+DEFAULT_BIN = _find_default_bin()
 CATALOG_URL = "https://api.flydigi.com/android/v3/Firmwares/pcNew?type=f4"
 
 # Informational: full write was live-proven on this pad version (not a gate).

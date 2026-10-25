@@ -7,22 +7,33 @@ from pathlib import Path
 
 from flydigi.ipc import DaemonClient, default_socket_path
 
-_UNIT = Path.home() / ".config/systemd/user/flydigi-vader4d.service"
-_UDEV = Path("/etc/udev/rules.d/99-flydigi-vader4.rules")
+_UNIT_USER = Path.home() / ".config/systemd/user/flydigi-vader4d.service"
+_UNIT_SYSTEM = (
+    Path("/usr/lib/systemd/user/flydigi-vader4d.service"),
+    Path("/usr/lib/systemd/system/flydigi-vader4d.service"),
+)
+_UDEV_PATHS = (
+    Path("/usr/lib/udev/rules.d/99-flydigi-vader4.rules"),
+    Path("/etc/udev/rules.d/99-flydigi-vader4.rules"),
+)
 _INSTALL_HINT = (
-    "Install the driver once with:\n"
+    "Install the driver package for your distro (flydigi-vader4d),\n"
+    "or from this repo:\n"
     "  ./scripts/install-driver.sh\n\n"
     "Or start it in a terminal:\n"
-    "  python3 driver/flydigi_vader4d.py"
+    "  flydigi-vader4d\n"
+    "  # or: python3 driver/flydigi_vader4d.py"
 )
 
 
 def unit_installed() -> bool:
-    return _UNIT.is_file()
+    if _UNIT_USER.is_file():
+        return True
+    return any(p.is_file() for p in _UNIT_SYSTEM)
 
 
 def udev_installed() -> bool:
-    return _UDEV.is_file()
+    return any(p.is_file() for p in _UDEV_PATHS)
 
 
 def systemd_active() -> bool | None:
@@ -61,7 +72,6 @@ def describe(*, assume_down: bool = False) -> tuple[str, str | None]:
     active = systemd_active()
 
     if active is True:
-        # Unit claims active but socket dead — crashed / stuck.
         return (
             "Driver not responding",
             (
@@ -69,7 +79,7 @@ def describe(*, assume_down: bool = False) -> tuple[str, str | None]:
                 "Try:\n"
                 "  systemctl --user restart flydigi-vader4d.service\n\n"
                 "Or run it in a terminal to see errors:\n"
-                "  python3 driver/flydigi_vader4d.py"
+                "  flydigi-vader4d"
             ),
         )
 
@@ -81,7 +91,7 @@ def describe(*, assume_down: bool = False) -> tuple[str, str | None]:
                 "Start it with:\n"
                 "  systemctl --user start flydigi-vader4d.service\n\n"
                 "Or:\n"
-                "  python3 driver/flydigi_vader4d.py"
+                "  flydigi-vader4d"
             ),
         )
 
