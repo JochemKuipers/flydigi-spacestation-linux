@@ -24,11 +24,32 @@ CMD_WRITE_CONFIG_START = 234
 CMD_READ_CONFIG = 235
 CMD_GET_DEVICE_INFO = 236
 CMD_HAPTIC = 0x0F  # SDL V1 rumble on report 5
+# SubFunc_PrefixId / SubFunc_SaveFlashConfig (DongleCommand.GetFlashSaveConfigCmd)
+CMD_SUBFUNC_PREFIX = 80
+CMD_SAVE_FLASH = 3
 
 LED_PACKAGE_LENGTH = 49
+# Legacy flydigictl size. Vader 4 Pro fw 6.9.x / config v1.3 uses PackLengthNewV31:
+# header byte[2] is the max parcel index (83) → 84 parcels × 10 = 840 bytes.
 CONFIG_PACKAGE_LENGTH = 52
+CONFIG_PACKAGE_LENGTH_V31 = 84
 MAX_PARCEL = 10
 
+
+def flash_save_config_cmd(tag0: int = 0, tag1: int = 0) -> bytes:
+    """DongleCommand.GetFlashSaveConfigCmd — commit staged profile to flash.
+
+    Length matches SS (perPackageLength+5 = 15). Do **not** pad to the HID
+    report count: 32-byte zero-padded OUTs get no reply on this firmware.
+    """
+    pkt = bytearray(MAX_PARCEL + 5)
+    pkt[0] = 5
+    pkt[1] = CMD_SUBFUNC_PREFIX
+    pkt[2] = CMD_SAVE_FLASH
+    pkt[3] = tag0 & 0xFF
+    pkt[4] = tag1 & 0xFF
+    pkt[5] = sum(pkt[i] for i in range(5)) & 0xFF
+    return bytes(pkt)
 
 @dataclass
 class DeviceInfo:
@@ -386,6 +407,8 @@ class DInputDevice:
         return self.fd
 
     def write_raw(self, data: bytes) -> None:
+        # Short OUTs (12–15 B) are intentional — zero-padding to the 32 B HID
+        # report size makes fw 6.9.x ignore commands entirely.
         os.write(self.fd, data)
 
     def send_command(self, cmd: int, *args: int) -> None:
@@ -410,7 +433,6 @@ class DInputDevice:
         buf[2] = lo
         buf[3] = hi
         self.write_raw(bytes(buf))
-
     def request_device_info(self) -> None:
         self._device_info = None
         self.send_command(CMD_GET_DEVICE_INFO)
@@ -429,6 +451,8 @@ class DInputDevice:
         cid = self._config_id if config_id is None else config_id
         self._cfg_chunks.clear()
         self._cfg_data = None
+        # Start at legacy size; parcel 0 may raise this to CONFIG_PACKAGE_LENGTH_V31.
+        self._cfg_expected = CONFIG_PACKAGE_LENGTH
         self.send_command(CMD_READ_CONFIG, cid)
 
     def write_led_config(
@@ -445,36 +469,97 @@ class DInputDevice:
             on_report=on_report,
         )
 
+    def save_flash_config(
+        self,
+        tag0: int = 0,
+        tag1: int = 0,
+        *,
+        timeout: float = 0.5,
+        on_report: Callable[[object], None] | None = None,
+    ) -> bool:
+        """Commit the staged gamepad config to flash (cmd 80/3).
+
+        Must run immediately after a *staged* write — an intervening config
+        read drops the stage on Vader 4 fw 6.9.x. Reply is often silent.
+        """
+        self.write_raw(flash_save_config_cmd(tag0, tag1))
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            msg = self.pump(0.05)
+            if isinstance(msg, tuple) and msg[0] == "flash_saved":
+                return True
+            if msg is not None and on_report is not None:
+                on_report(msg)
+        return False
+
     def write_gamepad_config(
         self,
         data: bytes,
         config_id: int | None = None,
         *,
         on_report: Callable[[object], None] | None = None,
+        save_flash: bool = False,
     ) -> None:
         """Write the onboard profile blob, waiting for per-parcel ACKs.
 
-        Space Station / flydigictl gate each parcel on an ACK. Fire-and-forget
-        writes look successful in our cache but the pad keeps the previous flash
-        mapping (e.g. a Windows SS remap) across reconnect.
+        Vader 4 fw 6.9.x (**O** 2026-10-25):
+        - Finishing all 84 data parcels of a 234 write discards the stage /
+          can wedge the command channel.
+        - Omitting the last parcel stages changes in RAM for ~1–3 s only;
+          SaveFlash (80/3) with tags (0,0) does **not** commit to flash on
+          this build (reverts after idle). Flash persist still unsolved.
+        Default ``save_flash=False`` until a working commit sequence is known.
         """
         cid = self._config_id if config_id is None else config_id
+        chunks = gamepad_config_parcels(data, cid)
+        # Avoid completing the 234 transfer (see docstring).
+        if len(chunks) > 1:
+            chunks = chunks[:-1]
         self.write_parcels(
-            gamepad_config_parcels(data, cid),
+            chunks,
             on_report=on_report,
+            ack_final=True,
         )
-
+        if save_flash:
+            self.save_flash_config(on_report=on_report)
     def write_parcels(
         self,
         chunks: list[bytes],
         *,
         max_retries: int = 3,
         chunk_timeout: float = 3.0,
+        inter_parcel_delay: float = 0.006,
+        ack_final: bool = False,
         on_report: Callable[[object], None] | None = None,
     ) -> None:
-        """Send parcelized HID config chunks with ACK + retry (flydigictl-style)."""
+        """Send parcelized HID config chunks with ACK + retry.
+
+        Space Station ACKs the start header as index ``255``, then parcels
+        with matching chunk indices. Accepting ``ack >= i`` was wrong: a lone
+        ``255`` satisfied every subsequent wait and blasted the rest.
+
+        When ``ack_final`` is false (LED / legacy), the last parcel is sent
+        without waiting (SS behaviour). Config staging sets ``ack_final``.
+        """
+        if not chunks:
+            return
         self._acks.clear()
+        last = len(chunks) - 1
         for i, chunk in enumerate(chunks):
+            if i == last and not ack_final:
+                self.write_raw(chunk)
+                deadline = time.monotonic() + 0.3
+                while time.monotonic() < deadline:
+                    msg = self.pump(0.05)
+                    if msg is None:
+                        continue
+                    if isinstance(msg, tuple) and msg[0] == "ack":
+                        break
+                    if on_report is not None:
+                        on_report(msg)
+                time.sleep(0.05)
+                return
+
             ok = False
             for _attempt in range(max_retries):
                 self.write_raw(chunk)
@@ -482,8 +567,9 @@ class DInputDevice:
                 while time.monotonic() < deadline:
                     msg = self.pump(0.05)
                     if isinstance(msg, tuple) and msg[0] == "ack":
-                        # Same rule as flydigictl ConfigWriter: ack index >= i.
-                        if int(msg[1]) >= i:
+                        ack = int(msg[1])
+                        # Header ACK is 255; later parcels echo their chunk index.
+                        if ack == i or (i == 0 and ack == 255):
                             ok = True
                             break
                         continue
@@ -495,6 +581,8 @@ class DInputDevice:
                 raise TimeoutError(
                     f"config write ACK timeout at parcel {i}/{len(chunks)}"
                 )
+            if inter_parcel_delay > 0:
+                time.sleep(inter_parcel_delay)
 
     def pump(self, timeout: float = 0.0) -> object | None:
         """Read one packet; return V1Report, DeviceInfo update, or None."""
@@ -546,24 +634,32 @@ class DInputDevice:
 
         if len(data) > 15 and data[15] == CMD_READ_CONFIG:
             idx = data[3]
-            self._cfg_chunks[idx] = bytes(data[5:15])
-            if len(self._cfg_chunks) >= self._cfg_expected:
+            payload = bytes(data[5:15])
+            self._cfg_chunks[idx] = payload
+            # v1.3+: byte[2] of parcel 0 is max parcel index (SS PackLengthNewV31).
+            if idx == 0 and len(payload) >= 3 and payload[0] == 1 and payload[1] >= 3:
+                self._cfg_expected = max(CONFIG_PACKAGE_LENGTH, int(payload[2]) + 1)
+            if len(self._cfg_chunks) >= self._cfg_expected and all(
+                i in self._cfg_chunks for i in range(self._cfg_expected)
+            ):
                 buf = bytearray()
                 for i in range(self._cfg_expected):
-                    buf += self._cfg_chunks.get(i, b"\x00" * 10)
+                    buf += self._cfg_chunks[i]
                 self._cfg_data = bytes(buf)
                 return ("config", self._cfg_data)
 
-        # Write ACKs: start cmd (234/231) or LED data parcels (51). Config data
-        # parcels use inner cmd 34 — accept those too if the pad echoes them.
+        # Write ACKs: SS only treats 234/231/51 (not inner data cmd 34).
         if len(data) > 15 and data[15] in (
             CMD_WRITE_CONFIG_START,
             CMD_WRITE_LED_START,
             51,
-            34,
         ):
             self._acks.append(int(data[3]))
             return ("ack", data[3])
+
+        # SaveFlash callback: [3]==80, [4]==3 (DInputDataManager).
+        if len(data) > 4 and data[3] == CMD_SUBFUNC_PREFIX and data[4] == CMD_SAVE_FLASH:
+            return ("flash_saved", data)
 
         return None
 

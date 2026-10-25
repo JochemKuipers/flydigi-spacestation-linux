@@ -92,4 +92,4 @@ index_lo, index_hi, payload[16], crc16_lo, crc16_hi
 | Channel | USB **IF3**, usage **`FFEF`**, report **5**, 64 B (daemon stays on IF2) |
 | Dry-run | Start OUT → report-5 IN echo |
 | Full reflash | Archived `6.9.3.3` same-version; ~36 s; device OTA success status; post `firmware=6.9.3.3` |
-| Safety | Flash always does start dry-run first (abort if no ACK). No version allowlist — older pads are the update audience. |
+| Safety | Flash always does start+**finish** dry-run first (abort if no start ACK). Start alone leaves the pad in firmware-update mode — finish closes the session. Mid-flash failure also sends finish. Recovery: `scripts/ota-abort.py`. No version allowlist — older pads are the update audience. |

@@ -27,14 +27,22 @@ from PySide6.QtWidgets import (
 
 from flydigi.dinput_proto import build_led
 from flydigi.ipc import DaemonClient
-from flydigi.ota import DEFAULT_BIN, usb_ota_ready
+from flydigi.ota import DEFAULT_BIN, looks_like_ota_stuck_error, usb_ota_ready
 
 from .bridge import DaemonBridge
 from .buttons import ButtonsPage
 from .feel import FeelPage
 from .manual import ManualView
 from .widgets import LivePadView, StatChip, logo_pixmap
-from .workers import BackgroundRpc, CatalogFetcher, OtaWorker, start_ota_thread
+from .workers import (
+    BackgroundRpc,
+    CatalogFetcher,
+    OtaRecoverWorker,
+    OtaWorker,
+    check_firmware_update_stuck,
+    start_ota_recover_thread,
+    start_ota_thread,
+)
 
 LED_MODES = [
     (6, "Off"),  # SS Close
@@ -86,6 +94,10 @@ class MainWindow(QMainWindow):
         self._fw_startup_check = False  # one silent catalog check after pad fw known
         self._fw_update_prompted = False
         self._ota_worker: OtaWorker | None = None
+        self._ota_recover_worker: OtaRecoverWorker | None = None
+        self._ota_stuck_prompted = False  # once per connect until user acts / disconnect
+        self._ota_stuck_bg = BackgroundRpc(self)
+        self._ota_stuck_bg.finished_ok.connect(self._ota_stuck_check_done)
         # Sliders fire valueChanged on every tick — debounce preview + pad write.
         self._led_preview_timer = QTimer(self)
         self._led_preview_timer.setSingleShot(True)
@@ -344,8 +356,15 @@ class MainWindow(QMainWindow):
         self.fw_flash_btn = QPushButton("Install update…")
         self.fw_flash_btn.setObjectName("Danger")
         self.fw_flash_btn.clicked.connect(self._fw_flash)
+        self.fw_exit_ota_btn = QPushButton("Exit firmware update mode…")
+        self.fw_exit_ota_btn.setToolTip(
+            "If Space Station (or a failed flash) left the pad stuck in "
+            "update mode, this sends the leave-update handshake."
+        )
+        self.fw_exit_ota_btn.clicked.connect(self._fw_exit_ota_clicked)
         row.addWidget(self.fw_check_btn)
         row.addWidget(self.fw_flash_btn)
+        row.addWidget(self.fw_exit_ota_btn)
         row.addStretch()
         lay.addLayout(row)
         self.fw_progress = QProgressBar()
@@ -385,8 +404,131 @@ class MainWindow(QMainWindow):
             )
             return {"ok": False, "error": str(exc)}
         if not resp.get("ok"):
-            QMessageBox.warning(self, "That didn’t work", resp.get("error", "unknown"))
+            err = str(resp.get("error", "unknown"))
+            QMessageBox.warning(self, "That didn’t work", err)
+            if (
+                self._transport != "bluetooth"
+                and looks_like_ota_stuck_error(err)
+                and not self._ota_stuck_prompted
+            ):
+                self._offer_exit_firmware_update_mode(detail=err)
         return resp
+
+    # —— firmware update mode recovery ——
+    def _schedule_ota_stuck_check(self) -> None:
+        if (
+            self._ota_stuck_prompted
+            or self._fw_busy
+            or self._transport == "bluetooth"
+            or self._ota_stuck_bg.busy
+        ):
+            return
+
+        def job() -> dict:
+            return check_firmware_update_stuck()
+
+        self._ota_stuck_bg.run(job, name="ota-stuck-check")
+
+    @Slot(object)
+    def _ota_stuck_check_done(self, result: object) -> None:
+        if not isinstance(result, dict) or not result.get("stuck"):
+            return
+        self._offer_exit_firmware_update_mode(detail=str(result.get("detail") or ""))
+
+    def _offer_exit_firmware_update_mode(self, *, detail: str = "") -> None:
+        if self._ota_stuck_prompted or self._fw_busy:
+            return
+        self._ota_stuck_prompted = True
+        body = (
+            "This controller looks stuck in firmware update mode, so settings "
+            "can’t be written.\n\n"
+            "Switch it back to standard mode now?"
+        )
+        if detail:
+            body += f"\n\n({detail})"
+        reply = QMessageBox.warning(
+            self,
+            "Firmware update mode",
+            body,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self._fw_exit_ota_run()
+        else:
+            self.statusBar().showMessage(
+                "Left in update mode — use Firmware → Exit firmware update mode…",
+                10_000,
+            )
+
+    @Slot()
+    def _fw_exit_ota_clicked(self) -> None:
+        if usb_ota_ready() is None:
+            QMessageBox.warning(
+                self,
+                "Not available",
+                "Need USB or the dongle in DInput (blue LED).\n"
+                "Bluetooth can’t leave firmware update mode.",
+            )
+            return
+        reply = QMessageBox.question(
+            self,
+            "Exit firmware update mode",
+            "Send the leave-update handshake to the controller?\n\n"
+            "Use this if a flash failed or Space Station reported "
+            "firmware update mode.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self._ota_stuck_prompted = True
+            self._fw_exit_ota_run()
+
+    def _fw_exit_ota_run(self) -> None:
+        self.fw_status.setText("Leaving firmware update mode…")
+        self.fw_exit_ota_btn.setEnabled(False)
+        worker = OtaRecoverWorker()
+        self._ota_recover_worker = worker
+        worker.finished_ok.connect(self._fw_exit_ota_ok)
+        worker.failed.connect(self._fw_exit_ota_fail)
+        start_ota_recover_thread(self, worker)
+
+    @Slot(str)
+    def _fw_exit_ota_ok(self, status: str) -> None:
+        self.fw_exit_ota_btn.setEnabled(True)
+        if status == "unavailable":
+            self.fw_status.setText("No USB OTA channel — plug in DInput.")
+            QMessageBox.warning(
+                self,
+                "Couldn’t switch mode",
+                "No USB firmware channel found. Plug in USB or the dongle "
+                "in DInput mode (blue LED).",
+            )
+            return
+        if status == "no_reply":
+            self.fw_status.setText("No reply — try unplug/replug.")
+            QMessageBox.warning(
+                self,
+                "No reply",
+                "The controller didn’t answer. Unplug and plug it back in, "
+                "then try again.",
+            )
+            return
+        self.fw_status.setText("Back in standard mode.")
+        self.statusBar().showMessage("Left firmware update mode", 8_000)
+        QMessageBox.information(
+            self,
+            "Standard mode",
+            "The controller should accept lighting and button maps again.",
+        )
+        self._pull_info_quiet(refresh=True)
+        QTimer.singleShot(300, self._sync_led_from_pad)
+
+    @Slot(str)
+    def _fw_exit_ota_fail(self, msg: str) -> None:
+        self.fw_exit_ota_btn.setEnabled(True)
+        self.fw_status.setText(f"Exit update mode failed: {msg}")
+        QMessageBox.warning(self, "Couldn’t switch mode", msg)
 
     # —— firmware ——
     def _fw_maybe_startup_check(self) -> None:
@@ -497,6 +639,20 @@ class MainWindow(QMainWindow):
         self._fw_busy = False
         self.fw_flash_btn.setEnabled(True)
         self.fw_check_btn.setEnabled(True)
+        self._ota_stuck_prompted = False
+        reply = QMessageBox.warning(
+            self,
+            "Firmware update failed",
+            f"{msg}\n\n"
+            "The pad may be stuck in firmware update mode.\n"
+            "Exit update mode now?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self._ota_stuck_prompted = True
+            self._fw_exit_ota_run()
+
 
     # —— lighting ——
     def _led_mode_value(self) -> int:
@@ -602,10 +758,18 @@ class MainWindow(QMainWindow):
         except OSError:
             return
         if not resp.get("ok"):
+            err = str(resp.get("error", "unknown"))
             if not quiet:
-                QMessageBox.warning(
-                    self, "That didn’t work", resp.get("error", "unknown")
-                )
+                QMessageBox.warning(self, "That didn’t work", err)
+            if (
+                not quiet
+                and looks_like_ota_stuck_error(err)
+                and not self._ota_stuck_prompted
+            ):
+                self._offer_exit_firmware_update_mode(detail=err)
+            elif quiet and not self._ota_stuck_prompted:
+                # First USB sync failed — check whether update-mode is the cause.
+                QTimer.singleShot(400, self._schedule_ota_stuck_check)
             return
         led = resp["led"]
         idx = self.led_mode.findData(led["mode"])
@@ -681,6 +845,7 @@ class MainWindow(QMainWindow):
             return
         self._pad_alive = False
         self._led_synced = False
+        self._ota_stuck_prompted = False
         self._set_conn(False, "Offline")
         self.chip_status.set_value("Offline")
         self.chip_battery.set_value("—")
@@ -760,6 +925,7 @@ class MainWindow(QMainWindow):
             if not self._led_synced:
                 self._led_synced = True
                 QTimer.singleShot(0, self._sync_led_from_pad)
+                QTimer.singleShot(800, self._schedule_ota_stuck_check)
 
     @Slot(dict)
     def _on_report(self, rep: dict) -> None:

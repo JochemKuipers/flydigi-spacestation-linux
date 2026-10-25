@@ -40,9 +40,10 @@ Responses are non-`04 FE` packets; many put the echoed command ID in byte `[15]`
 | 17 | Dongle version | response `[4, 17, FW_L, FW_H]` (**C**) |
 | 229 | Read LED config | parcels; byte `[15]==229`, chunk idx in `[3]`, 10 data bytes `[5:15]`; **49** chunks (**C**/**O**) |
 | 231 | Write LED start | followed by inner parcels cmd **51** (**C**) |
-| 234 | Write gamepad config start | inner parcels cmd **34**; pad ACKs each parcel (`[15]==234`, idx in `[3]`) — fire-and-forget drops writes (**C**/flydigictl) |
-| 235 | Read gamepad config | **52** chunks × 10 → 520 bytes (**O**) |
-| 236 | Get device info | **O**: device_id=`[3]`, mac=`[5:9]`, FW_L/H=`[9]/[10]`, battery=`[11]`, cpu=`[12]`, conn=`[13]`, motion=`[14]`, cmd=`[15]` |
+| 234 | Write gamepad config start | inner parcels cmd **34**; pad ACKs header as idx **255**, then chunk idx. **O**: finishing all 84 data parcels discards the stage on fw 6.9.x — omit the last data parcel, then 80/3 |
+| 235 | Read gamepad config | v1.3: **84** chunks × 10 → 840 bytes (max idx = header byte[2]); older: 52×10 (**O**) |
+| 236 | Get device info | **O**: device_id=`[3]`, mac=`[5:9]`, FW_L/H=`[9]/[10]`, battery=`[11]`, cpu=`[12]`, conn=`[13]`, motion=`[14]`, cmd=`[15]`. Short **12** B OUTs — do not zero-pad to 32 |
+| 80/3 | SaveFlashConfig | `[5, 80, 3, tag0, tag1, sum]` (15 B) — commit staged write (**S**). After incomplete 234 stage; no config read before it (**O**, persists across reopen) |
 
 ### Device info example (**O**)
 
@@ -72,7 +73,7 @@ currently 0 in our daemon). UI hotspots: `app/ui/assets/ss4/device_config_f4.jso
 | 123–136 | Trigger curves (2×7) |
 | 137–144 | Motion |
 | 145–153 | Motors (main_switch, L/R type/min/max/scale) |
-| 154+ | Trigger motors / lunpan / macros / padding → 520 B total |
+| 154+ | Trigger motors / lunpan / macros / padding → 840 B total on v1.3 |
 
 ## IF3 (`0xFFEE`)
 

@@ -9,7 +9,14 @@ from typing import Any
 
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 
-from flydigi.ota import fetch_catalog_version, flash_bin
+from flydigi.ipc import DaemonClient
+from flydigi.ota import (
+    fetch_catalog_version,
+    flash_bin,
+    looks_like_ota_stuck_error,
+    recover_firmware_update_mode,
+    usb_ota_ready,
+)
 
 
 class BackgroundRpc(QObject):
@@ -104,6 +111,48 @@ def start_ota_thread(
     worker: OtaWorker,
 ) -> QThread:
     """Own the thread on ``parent``; keep ``worker`` referenced by caller."""
+    thread = QThread(parent)
+    worker.moveToThread(thread)
+    worker.finished_ok.connect(thread.quit)
+    worker.failed.connect(thread.quit)
+    thread.started.connect(worker.run)
+    thread.finished.connect(worker.deleteLater)
+    thread.start()
+    return thread
+
+
+def check_firmware_update_stuck() -> dict[str, Any]:
+    """Return ``{stuck: bool, detail: str}`` — USB IF3 + config timeout heuristic."""
+    if usb_ota_ready() is None:
+        return {"stuck": False, "detail": "no IF3"}
+    try:
+        with DaemonClient() as c:
+            resp = c.request("config_get", refresh=True)
+    except OSError as exc:
+        err = str(exc)
+        return {
+            "stuck": looks_like_ota_stuck_error(err),
+            "detail": err,
+        }
+    if resp.get("ok"):
+        return {"stuck": False, "detail": "config ok"}
+    err = str(resp.get("error") or "config failed")
+    return {"stuck": looks_like_ota_stuck_error(err), "detail": err}
+
+
+class OtaRecoverWorker(QObject):
+    finished_ok = Signal(str)  # recover_firmware_update_mode status
+    failed = Signal(str)
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            self.finished_ok.emit(recover_firmware_update_mode())
+        except Exception as exc:  # noqa: BLE001
+            self.failed.emit(str(exc))
+
+
+def start_ota_recover_thread(parent: QObject, worker: OtaRecoverWorker) -> QThread:
     thread = QThread(parent)
     worker.moveToThread(thread)
     worker.finished_ok.connect(thread.quit)

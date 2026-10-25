@@ -114,8 +114,13 @@ archived `6.9.3.3` on IF3 succeeded (~36 s, device success status, still
 
 **Pre-flash checks (default):**
 1. USB IF3 present; image size/CRC trailer sane
-2. **Start-frame dry-run** (open → start OUT → require report-5 IN → close, **no data**)
+2. **Start+finish dry-run** (open → start OUT → require report-5 IN → **finish** OUT → close, **no data**)
 3. Only then full write
+
+OTA **start** alone puts the pad in firmware-update mode. Closing without
+**finish** leaves it stuck there (Space Station then prompts to switch back to
+standard mode). Preflight always finishes; a failed mid-flash also sends finish.
+Recovery: `python3 scripts/ota-abort.py`.
 
 No version allowlist — older pads are the ones that need updates; the dry-run
 ACK is the gate. Full write was live-proven on `6.9.3.3`. `--no-preflight`

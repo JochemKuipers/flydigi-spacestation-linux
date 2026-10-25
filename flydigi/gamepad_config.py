@@ -1,9 +1,18 @@
 """Onboard gamepad config blob (IF2 cmd 235/234) — V2 layout.
 
-Vader 4 Pro live dump is 520 bytes (52 parcels × 10). Offsets match Space Station
-4 / flydigictl `getConfigListsV2`. Key slot indices 0–31 align with SS4
-`device_config_f4` hotspot `id` values when id < 32 (JsLeft/JsRight use 240/241
-UI-only ids and are not remapped via this blob).
+Vader 4 Pro (config v1.3) live dump is **840 bytes** (84 parcels × 10;
+header byte[2] == 83 = max parcel index). Older flydigictl pads used 520 bytes
+(52 parcels). Offsets match Space Station 4 `getConfigListsV2`. Key slot
+indices 0–31 align with SS4 `device_config_f4` hotspot `id` values when id < 32
+(JsLeft/JsRight use 240/241 UI-only ids and are not remapped via this blob).
+
+Writing a truncated 520-byte blob is ACK'd for the early parcels but the pad
+reverts to flash within ~1s — remaps look saved then bounce back on reconnect.
+
+Completing a full 234 transfer (all 84 data parcels) makes fw 6.9.x discard
+the stage and reload flash. Stage with the final parcel omitted, then
+SaveFlash (80/3) immediately — no config read in between — and remaps stick
+across reconnect (**O**).
 """
 
 from __future__ import annotations

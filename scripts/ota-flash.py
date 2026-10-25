@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Full HID OTA flash for Vader 4 Pro (f4).
 
-Always runs a start-frame dry-run first (no image bytes). Aborts if that ACK
-fails — that is the safety gate for older/unknown pad firmware.
+Always runs a start+finish dry-run first (no image bytes). Aborts if start ACK
+fails — that is the safety gate for older/unknown pad firmware. Finish after
+start keeps the pad out of stuck firmware-update mode.
 
   python3 scripts/ota-flash.py
   python3 scripts/ota-flash.py --yes

@@ -4,6 +4,11 @@ Safety: every flash (default) runs a start-frame dry-run (ACK required) on a
 fresh open/close **before** any data cells. That is the gate for unknown /
 older pad firmware — not a version allowlist (people on latest do not need
 updates; people on older builds do).
+
+Critical: an OTA **start** puts the pad into firmware-update mode. Closing the
+hidraw without a **finish** frame leaves it stuck there (Space Station then
+offers to switch back to standard mode). Preflight and abort paths must always
+send finish after start.
 """
 
 from __future__ import annotations
@@ -170,34 +175,149 @@ def _drain(fd: int, window: float = 0.15) -> None:
             break
 
 
+def _finish_body(last_index: int) -> bytes:
+    """SS3 OTA finish frame body (after report ID). ``last_index`` is cell index."""
+    last = last_index & 0xFFFF
+    ones = (0x10000 - last) & 0xFFFF
+    return bytes(
+        [
+            2,
+            6,
+            0,
+            2,
+            0xFF,
+            last & 0xFF,
+            (last >> 8) & 0xFF,
+            ones & 0xFF,
+            (ones >> 8) & 0xFF,
+        ]
+    )
+
+
+def _send_finish(fd: int, last_index: int = 0, *, timeout: float = 1.5) -> bytes | None:
+    """Send finish and wait for any report-5 (OK or Fail both end the session)."""
+    os.write(fd, _pack(_finish_body(last_index)))
+    return _wait_report5(fd, timeout)
+
+
+def _is_ota_status(data: bytes) -> bool:
+    """True if IN looks like SS3 OTA success/fail status (session closed)."""
+    return _is_ok(data) or _is_fail(data)
+
+
+def abort_ota_session(
+    hidraw: Path | None = None,
+    *,
+    last_index: int = 0,
+    timeout: float = 1.5,
+) -> bool:
+    """Best-effort leave firmware-update mode after a hung/incomplete OTA.
+
+    Sends the SS3 finish frame on IF3. Returns True if any report-5 replied.
+    Safe to call when unsure whether a session is open.
+    """
+    path = hidraw or usb_ota_ready()
+    if path is None:
+        return False
+    fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
+    try:
+        _drain(fd)
+        ack = _send_finish(fd, last_index, timeout=timeout)
+        return ack is not None
+    except OSError:
+        return False
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+
+def recover_firmware_update_mode(
+    hidraw: Path | None = None,
+    *,
+    timeout: float = 1.5,
+) -> str:
+    """Leave firmware-update mode via OTA finish. Return status string.
+
+    ``cleared`` — IF3 replied with OTA status (session closed)
+    ``replied`` — other report-5 (finish sent; likely ok)
+    ``no_reply`` — finish sent, no IN (unplug may still be needed)
+    ``unavailable`` — no USB IF3
+    """
+    path = hidraw or usb_ota_ready()
+    if path is None:
+        return "unavailable"
+    fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
+    try:
+        _drain(fd)
+        ack = _send_finish(fd, last_index=0, timeout=timeout)
+        if ack is None:
+            return "no_reply"
+        if _is_ota_status(ack):
+            return "cleared"
+        return "replied"
+    except OSError:
+        return "no_reply"
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+
+def looks_like_ota_stuck_error(message: str) -> bool:
+    """Heuristic: config/LED RPC failures that often mean update-mode wedge."""
+    low = message.lower()
+    return any(
+        s in low
+        for s in (
+            "timeout",
+            "timed out",
+            "no ack",
+            "config read",
+            "config write",
+            "not writable",
+            "firmware update",
+        )
+    )
+
+
 def preflight_start_ack(
     hidraw: Path | None = None,
     *,
     timeout: float = PREFLIGHT_TIMEOUT,
 ) -> bytes:
-    """Send OTA start only; require a report-5 IN; close without data cells.
+    """Dry-run: OTA start → require report-5 ACK → **finish** (no image bytes).
 
-    Raises ``OtaPreflightError`` if the channel does not ACK. On success the
-    device has not received any firmware payload from this call.
+    Raises ``OtaPreflightError`` if the channel does not ACK start. Always tries
+    to send finish afterward so the pad is not left in firmware-update mode.
     """
     path = hidraw or usb_ota_ready()
     if path is None:
         raise OtaPreflightError("USB IF3 (FFEF) not found — use wired DInput")
     fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
+    start_ack: bytes | None = None
     try:
         _drain(fd)
         os.write(fd, _pack(bytes([2, 2, 0, 1, 0xFF])))
-        ack = _wait_report5(fd, timeout)
-        if ack is None:
+        start_ack = _wait_report5(fd, timeout)
+        if start_ack is None:
             raise OtaPreflightError(
                 f"no report-5 ACK to OTA start within {timeout}s — aborting before data"
             )
-        if _is_fail(ack):
+        if _is_fail(start_ack):
             raise OtaPreflightError(
-                f"OTA fail status on start ({ack[6]}) — aborting before data"
+                f"OTA fail status on start ({start_ack[6]}) — aborting before data"
             )
-        return ack
+        return start_ack
     finally:
+        # Start alone wedges the pad in update mode; always close the session.
+        if start_ack is not None:
+            try:
+                _send_finish(fd, last_index=0, timeout=min(timeout, 1.5))
+            except OSError:
+                pass
         try:
             os.close(fd)
         except OSError:
@@ -235,16 +355,43 @@ def flash_image(
 
     if preflight:
         if on_status:
-            on_status("preflight: OTA start dry-run…")
+            on_status("preflight: OTA start+finish dry-run…")
         preflight_start_ack(path)
         if on_status:
             on_status("preflight OK — starting full write")
-        time.sleep(0.3)
+        # Finish may bounce the OTA iface; re-resolve before the real write.
+        time.sleep(0.4)
+        if hidraw is None:
+            for _ in range(25):
+                again = usb_ota_ready()
+                if again is not None:
+                    path = again
+                    break
+                time.sleep(0.15)
 
     fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
+    done_ok = False
+    index_out = [0]
     try:
-        _flash_fd(fd, image, bin_size, on_progress=on_progress, on_status=on_status)
+        _flash_fd(
+            fd,
+            image,
+            bin_size,
+            on_progress=on_progress,
+            on_status=on_status,
+            index_out=index_out,
+        )
+        done_ok = True
     finally:
+        if not done_ok:
+            try:
+                if on_status:
+                    on_status("abort: sending OTA finish to leave update mode…")
+                _send_finish(
+                    fd, last_index=max(0, index_out[0] - 1), timeout=1.5
+                )
+            except OSError:
+                pass
         try:
             os.close(fd)
         except OSError:
@@ -283,7 +430,9 @@ def _flash_fd(
     *,
     on_progress: ProgressCb | None,
     on_status: StatusCb | None,
-) -> None:
+    index_out: list[int] | None = None,
+) -> int:
+    """Run start→data→finish. Returns last ``ota_index`` (for abort finish)."""
     ota_index = 0
     phase = 2
     if on_status:
@@ -292,6 +441,12 @@ def _flash_fd(
     os.write(fd, _pack(bytes([2, 2, 0, 1, 0xFF])))
     t0 = time.monotonic()
     last_pct = -1
+
+    def _set_index(n: int) -> None:
+        nonlocal ota_index
+        ota_index = n
+        if index_out is not None:
+            index_out[0] = n
 
     while True:
         ack = _wait_report5(fd, ACK_TIMEOUT)
@@ -304,7 +459,7 @@ def _flash_fd(
         if _is_ok(ack):
             if on_progress:
                 on_progress(100, ota_index)
-            return
+            return ota_index
         if phase != 2:
             continue
 
@@ -321,29 +476,15 @@ def _flash_fd(
             crc = crc16_ss3(bytes(sendbuf[20 * col : 20 * col + 18]))
             sendbuf[20 * col + 18] = crc & 0xFF
             sendbuf[20 * col + 19] = (crc >> 8) & 0xFF
-            ota_index += 1
+            _set_index(ota_index + 1)
             if ota_index * 16 >= bin_size + 16:
-                ota_index -= 1
+                _set_index(ota_index - 1)
                 break
             length = 20 * col + 20
 
         if length == 0:
             last = (ota_index - 1) & 0xFFFF
-            ones = (0x10000 - last) & 0xFFFF
-            body = bytes(
-                [
-                    2,
-                    6,
-                    0,
-                    2,
-                    0xFF,
-                    last & 0xFF,
-                    (last >> 8) & 0xFF,
-                    ones & 0xFF,
-                    (ones >> 8) & 0xFF,
-                ]
-            )
-            os.write(fd, _pack(body))
+            os.write(fd, _pack(_finish_body(last)))
             phase = 0
             for _ in range(40):
                 ack2 = _wait_report5(fd, 1.0)
@@ -352,12 +493,12 @@ def _flash_fd(
                 if _is_ok(ack2):
                     if on_progress:
                         on_progress(100, ota_index)
-                    return
+                    return ota_index
                 if _is_fail(ack2):
                     raise RuntimeError(f"OTA Fail on finish status={ack2[6]}")
             if on_progress:
                 on_progress(100, ota_index)
-            return
+            return ota_index
 
         body = bytearray(3 + length)
         body[0] = 2
