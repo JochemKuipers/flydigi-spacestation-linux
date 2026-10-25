@@ -20,6 +20,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from flydigi.ipc import DaemonClient
+
+from .workers import BackgroundRpc
+
 Rpc = Callable[..., dict]
 
 
@@ -168,6 +172,9 @@ class FeelPage(QWidget):
             k: {"zero": 0, "end": 100} for k, _ in self.TARGETS
         }
         self._dirty = False
+        self._bg = BackgroundRpc(self)
+        self._bg.finished_ok.connect(self._reload_apply)
+        self._bg.failed.connect(self._reload_fail)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(28, 24, 28, 24)
@@ -310,7 +317,7 @@ class FeelPage(QWidget):
     def showEvent(self, event) -> None:
         super().showEvent(event)
         if self._transport != "bluetooth" and self._config is None:
-            QTimer.singleShot(0, self.reload_from_pad)
+            QTimer.singleShot(0, lambda: self._start_reload(refresh=False))
 
     def on_report(self, rep: dict) -> None:
         key = self.target.currentData()
@@ -339,10 +346,24 @@ class FeelPage(QWidget):
 
     @Slot()
     def reload_from_pad(self) -> None:
-        if not self._usb_ok():
+        self._start_reload(refresh=True)
+
+    def _start_reload(self, *, refresh: bool) -> None:
+        if not self._usb_ok() or self._bg.busy:
             return
-        resp = self._rpc("config_get")
+        self.status.setText("Loading…")
+
+        def job() -> dict:
+            with DaemonClient() as c:
+                return c.request("config_get", refresh=refresh)
+
+        self._bg.run(job, name="feel-reload")
+
+    @Slot(object)
+    def _reload_apply(self, result: object) -> None:
+        resp = result if isinstance(result, dict) else {}
         if not resp.get("ok"):
+            self.status.setText(f"Load failed: {resp.get('error', 'unknown')}")
             return
         self._config = resp["config"]
         for key, _ in self.TARGETS:
@@ -368,6 +389,10 @@ class FeelPage(QWidget):
         self._dirty = False
         self._apply_target_to_sliders()
         self.status.setText("Loaded from the controller.")
+
+    @Slot(str)
+    def _reload_fail(self, msg: str) -> None:
+        self.status.setText(f"Load failed: {msg}")
 
     @Slot()
     def save_to_pad(self) -> None:

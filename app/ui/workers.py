@@ -1,13 +1,45 @@
-"""Background work. Catalog uses a main-thread QObject + stdlib thread (no moveToThread)."""
+"""Background work. Catalog / RPC use a main-thread QObject + stdlib thread."""
 
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 
 from flydigi.ota import fetch_catalog_version, flash_bin
+
+
+class BackgroundRpc(QObject):
+    """Run a callable off the GUI thread; deliver result via queued signals."""
+
+    finished_ok = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._busy = False
+
+    @property
+    def busy(self) -> bool:
+        return self._busy
+
+    def run(self, fn: Callable[[], Any], *, name: str = "bg-rpc") -> None:
+        if self._busy:
+            return
+        self._busy = True
+
+        def work() -> None:
+            try:
+                self.finished_ok.emit(fn())
+            except Exception as exc:  # noqa: BLE001
+                self.failed.emit(str(exc))
+            finally:
+                self._busy = False
+
+        threading.Thread(target=work, name=name, daemon=True).start()
 
 
 class CatalogFetcher(QObject):

@@ -25,9 +25,11 @@ from PySide6.QtWidgets import (
 
 from flydigi.button_actions import KEYBOARD_CHOICES, MODIFIER_KEYS
 from flydigi.gamepad_config import KEY_NAMES
+from flydigi.ipc import DaemonClient
 
 from .labels import KEY_LABELS, hotspot_label
 from .widgets import LivePadView
+from .workers import BackgroundRpc
 
 Rpc = Callable[..., dict]
 
@@ -151,6 +153,9 @@ class ButtonsPage(QWidget):
         self._selected: int | None = None
         self._chip_btns: dict[int, QPushButton] = {}
         self._loading = False
+        self._bg = BackgroundRpc(self)
+        self._bg.finished_ok.connect(self._reload_apply)
+        self._bg.failed.connect(self._reload_fail)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 20, 24, 20)
@@ -319,9 +324,7 @@ class ButtonsPage(QWidget):
         self.macro_steps.textChanged.connect(self._on_editor_changed)
         l3.addWidget(QLabel("Sequence"))
         l3.addWidget(self.macro_steps)
-        tip = QLabel(
-            "Each key is pressed briefly in order when you trigger the macro."
-        )
+        tip = QLabel("Each key is pressed briefly in order when you trigger the macro.")
         tip.setObjectName("Muted")
         tip.setWordWrap(True)
         l3.addWidget(tip)
@@ -390,7 +393,7 @@ class ButtonsPage(QWidget):
     def showEvent(self, event) -> None:
         super().showEvent(event)
         if self._transport != "bluetooth" and not self._keys:
-            QTimer.singleShot(0, self.reload_from_pad)
+            QTimer.singleShot(0, lambda: self._start_reload(refresh=False))
 
     def on_report(self, rep: dict) -> None:
         self.pad.set_report(rep)
@@ -407,13 +410,34 @@ class ButtonsPage(QWidget):
 
     @Slot()
     def reload_from_pad(self) -> None:
-        if not self._usb_ok():
+        self._start_reload(refresh=True)
+
+    def _start_reload(self, *, refresh: bool) -> None:
+        if not self._usb_ok() or self._bg.busy:
             return
-        resp = self._rpc("config_get")
-        if not resp.get("ok"):
+        self.status.setText("Loading…")
+
+        def job() -> tuple[dict, dict]:
+            with DaemonClient() as c:
+                cfg = c.request("config_get", refresh=refresh)
+                acts = c.request("actions_get")
+            return cfg, acts
+
+        self._bg.run(job, name="buttons-reload")
+
+    @Slot(object)
+    def _reload_apply(self, result: object) -> None:
+        cfg_resp, acts = result  # type: ignore[misc]
+        if not isinstance(cfg_resp, dict) or not cfg_resp.get("ok"):
+            err = (
+                cfg_resp.get("error", "unknown")
+                if isinstance(cfg_resp, dict)
+                else "bad response"
+            )
+            self.status.setText(f"Load failed: {err}")
             return
         self._keys = {}
-        for k in resp["config"].get("keys") or []:
+        for k in cfg_resp["config"].get("keys") or []:
             kid = int(k["id"])
             self._keys[kid] = {
                 "id": kid,
@@ -425,12 +449,19 @@ class ButtonsPage(QWidget):
             self._keys.setdefault(
                 kid, {"id": kid, "map_id": 255, "turbo_type": 0, "turbo": 0}
             )
-        acts = self._rpc("actions_get")
-        self._actions = dict(acts.get("actions") or {}) if acts.get("ok") else {}
+        self._actions = (
+            dict(acts.get("actions") or {})
+            if isinstance(acts, dict) and acts.get("ok")
+            else {}
+        )
         self._refresh_chips()
         if self._selected is not None:
             self.select_key(self._selected)
         self.status.setText("Loaded pad map + keyboard/macro actions.")
+
+    @Slot(str)
+    def _reload_fail(self, msg: str) -> None:
+        self.status.setText(f"Load failed: {msg}")
 
     @Slot()
     def save_to_pad(self) -> None:

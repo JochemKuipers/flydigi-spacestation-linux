@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from flydigi.dinput_proto import build_led
+from flydigi.ipc import DaemonClient
 from flydigi.ota import DEFAULT_BIN, usb_ota_ready
 
 from .bridge import DaemonBridge
@@ -33,7 +34,7 @@ from .buttons import ButtonsPage
 from .feel import FeelPage
 from .manual import ManualView
 from .widgets import LivePadView, StatChip, logo_pixmap
-from .workers import CatalogFetcher, OtaWorker, start_ota_thread
+from .workers import BackgroundRpc, CatalogFetcher, OtaWorker, start_ota_thread
 
 LED_MODES = [
     (6, "Off"),  # SS Close
@@ -98,6 +99,17 @@ class MainWindow(QMainWindow):
         self._catalog = CatalogFetcher(self)
         self._catalog.finished_ok.connect(self._fw_catalog_ok)
         self._catalog.failed.connect(self._fw_catalog_fail)
+        self._pad_alive = False
+        self._led_synced = False
+        self._report_watch = QTimer(self)
+        self._report_watch.setSingleShot(True)
+        self._report_watch.setInterval(2000)
+        self._report_watch.timeout.connect(self._pad_quiet)
+        self._info_bg = BackgroundRpc(self)
+        self._info_bg.finished_ok.connect(self._info_pulled)
+        self._batt_timer = QTimer(self)
+        self._batt_timer.setInterval(5000)
+        self._batt_timer.timeout.connect(self._pull_battery)
 
         root = QWidget()
         root.setObjectName("Root")
@@ -133,12 +145,14 @@ class MainWindow(QMainWindow):
 
         sb = QStatusBar()
         self.setStatusBar(sb)
-        sb.showMessage("Connect your controller to get started.")
+        sb.showMessage("Checking driver…")
 
         self._bridge = DaemonBridge()
         self._bridge.status.connect(self._on_status)
         self._bridge.info.connect(self._on_info)
         self._bridge.report.connect(self._on_report)
+        self._bridge.presence.connect(self._on_presence)
+        self._bridge.driver_issue.connect(self._on_driver_issue)
         self._bridge.error.connect(lambda m: QMessageBox.warning(self, "Error", m))
         self._bridge.start()
 
@@ -634,15 +648,83 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_status(self, msg: str) -> None:
-        up = msg.lower().startswith("connected")
-        self._set_conn(up, "Connected" if up else "Offline")
-        self.chip_status.set_value("Online" if up else "Offline")
-        if not up:
-            self.live_pad.set_connected(False)
+        # Driver/service line only — controller presence is separate.
+        low = msg.lower()
+        if "not " in low or "disconnected" in low or "not responding" in low:
+            self._set_pad_alive(False)
         self.statusBar().showMessage(msg)
+
+    @Slot(str)
+    def _on_driver_issue(self, message: str) -> None:
+        QMessageBox.warning(self, "Controller driver", message)
+
+    @Slot(bool)
+    def _on_presence(self, connected: bool) -> None:
+        self._set_pad_alive(connected)
+
+    def _set_pad_alive(self, alive: bool, *, detail: str | None = None) -> None:
+        if alive:
+            if not self._pad_alive:
+                self._pad_alive = True
+                self._set_conn(True, "Connected")
+                self.chip_status.set_value("Online")
+                self.live_pad.set_connected(True)
+                self._pull_info_quiet(refresh=True)
+                self._batt_timer.start()
+            self._report_watch.start()
+            if detail:
+                self.statusBar().showMessage(detail)
+            return
+        self._report_watch.stop()
+        self._batt_timer.stop()
+        if not self._pad_alive and detail is None:
+            return
+        self._pad_alive = False
+        self._led_synced = False
+        self._set_conn(False, "Offline")
+        self.chip_status.set_value("Offline")
+        self.chip_battery.set_value("—")
+        self.chip_link.set_value("—")
+        self.chip_fw.set_value("—")
+        self.detail_name.setText("—")
+        self.detail_mac.setText("")
+        self.detail_note.setText("Turn the controller on, or plug in USB / the dongle.")
+        self.live_pad.set_connected(False)
+        self.feel_page.set_transport("unknown")
+        self.buttons_page.set_transport("unknown")
+        if detail:
+            self.statusBar().showMessage(detail)
+
+    def _pull_info_quiet(self, *, refresh: bool = False) -> None:
+        if self._info_bg.busy:
+            return
+
+        def job() -> dict:
+            with DaemonClient() as c:
+                return c.request("info", refresh=refresh)
+
+        self._info_bg.run(job, name="info-pull")
+
+    @Slot()
+    def _pull_battery(self) -> None:
+        if self._pad_alive:
+            self._pull_info_quiet(refresh=True)
+
+    @Slot(object)
+    def _info_pulled(self, result: object) -> None:
+        if isinstance(result, dict) and result.get("ok"):
+            self._on_info(result["info"])
+
+    @Slot()
+    def _pad_quiet(self) -> None:
+        # No input reports for a bit — treat as gone (power off, sleep, unplug).
+        self._set_pad_alive(False)
 
     @Slot(dict)
     def _on_info(self, info: dict) -> None:
+        if info.get("connected") is False:
+            self._set_pad_alive(False)
+            return
         transport = info.get("transport") or info.get("connection_type") or ""
         if transport == "bluetooth" or str(info.get("hid", "")).startswith("d7d7"):
             self._transport = "bluetooth"
@@ -656,6 +738,8 @@ class MainWindow(QMainWindow):
             self.fw_pad_label.setText(f"On this controller: {fw}")
             self.chip_fw.set_value(str(fw))
             self._fw_maybe_startup_check()
+        else:
+            self.chip_fw.set_value("—")
         batt = info.get("battery")
         self.chip_battery.set_value(f"{batt}%" if batt is not None else "—")
         self.chip_link.set_value(link)
@@ -672,11 +756,14 @@ class MainWindow(QMainWindow):
             self.detail_note.setText(
                 "Ready for lighting, rumble, button maps, and firmware updates."
             )
-            # Pull LED once on USB connect so the preview matches the pad.
-            QTimer.singleShot(0, self._sync_led_from_pad)
+            # Pull LED once per USB session (battery polls reuse this path).
+            if not self._led_synced:
+                self._led_synced = True
+                QTimer.singleShot(0, self._sync_led_from_pad)
 
     @Slot(dict)
     def _on_report(self, rep: dict) -> None:
+        self._set_pad_alive(True)
         self.live_pad.set_report(rep)
         if self.feel_page.isVisible():
             self.feel_page.on_report(rep)

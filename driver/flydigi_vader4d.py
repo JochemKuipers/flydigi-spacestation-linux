@@ -252,10 +252,10 @@ class Daemon:
                 last[key] = value
         ui.syn()
 
-    def _broadcast_report(self, report: V1Report | BtHidReport) -> None:
+    def _broadcast_subscribers(self, obj: dict[str, Any]) -> None:
         if not self._subscribers:
             return
-        line = (json.dumps(_report_dict(report)) + "\n").encode()
+        line = (json.dumps(obj) + "\n").encode()
         dead: list[socket.socket] = []
         for c in list(self._subscribers):
             try:
@@ -264,6 +264,12 @@ class Daemon:
                 dead.append(c)
         for c in dead:
             self._drop_client(c)
+
+    def _broadcast_report(self, report: V1Report | BtHidReport) -> None:
+        self._broadcast_subscribers(_report_dict(report))
+
+    def _broadcast_presence(self, connected: bool) -> None:
+        self._broadcast_subscribers({"event": "presence", "connected": connected})
 
     def _drop_client(self, c: socket.socket) -> None:
         self._subscribers.discard(c)
@@ -293,7 +299,7 @@ class Daemon:
                 self._subscribers.discard(c)
                 self._reply(c, {"ok": True})
             elif cmd == "info":
-                self._reply(c, self._cmd_info())
+                self._reply(c, self._cmd_info(refresh=bool(msg.get("refresh"))))
             elif cmd == "rumble":
                 self._reply(c, self._cmd_rumble(msg))
             elif cmd == "led_get":
@@ -301,7 +307,7 @@ class Daemon:
             elif cmd == "led_set":
                 self._reply(c, self._cmd_led_set(msg))
             elif cmd == "config_get":
-                self._reply(c, self._cmd_config_get())
+                self._reply(c, self._cmd_config_get(refresh=bool(msg.get("refresh"))))
             elif cmd == "config_set_sticks":
                 self._reply(c, self._cmd_config_set_sticks(msg))
             elif cmd == "config_set_keys":
@@ -342,11 +348,23 @@ class Daemon:
             self._publish_uinput(msg)
             self._broadcast_report(msg)
 
-    def _cmd_info(self) -> dict[str, Any]:
+    def _cmd_info(self, *, refresh: bool = False) -> dict[str, Any]:
+        if self.dev is None and self.bt is None:
+            return {
+                "ok": True,
+                "info": {
+                    "connected": False,
+                    "name": None,
+                    "firmware": None,
+                    "battery": None,
+                    "transport": None,
+                },
+            }
         if self.mode == "bt":
             return {
                 "ok": True,
                 "info": {
+                    "connected": True,
                     "device_id": None,
                     "firmware": None,
                     "battery": None,
@@ -357,9 +375,17 @@ class Daemon:
                     "mac": getattr(self.bt.dev, "uniq", "") if self.bt else "",
                 },
             }
-        dev = self._require_dev()
-        self._info = dev.wait_device_info(timeout=2.0, on_report=self._on_sideband)
-        return {"ok": True, "info": _info_dict(self._info)}
+        if refresh or self._info is None:
+            try:
+                self._info = self._require_dev().wait_device_info(
+                    timeout=1.5, on_report=self._on_sideband
+                )
+            except Exception:
+                if self._info is None:
+                    raise
+        info = _info_dict(self._info)
+        info["connected"] = True
+        return {"ok": True, "info": info}
 
     def _cmd_rumble(self, msg: dict[str, Any]) -> dict[str, Any]:
         if self.mode == "bt":
@@ -432,7 +458,11 @@ class Daemon:
         self._require_dev().write_led_config(cfg)
         return {"ok": True, "led": _led_dict(cfg)}
 
-    def _fetch_config(self):
+    def _fetch_config(self, *, refresh: bool = False):
+        # Reuse last blob when possible — a full HID read can take a few seconds
+        # and would freeze any UI that calls config_get on the GUI thread.
+        if not refresh and self._cfg_raw is not None:
+            return decode_gamepad_config(self._cfg_raw)
         dev = self._require_dev()
         cached = self._cfg_raw
         self._cfg_raw = None
@@ -466,10 +496,10 @@ class Daemon:
             self._require_dev().write_raw(chunk)
             time.sleep(0.02)
 
-    def _cmd_config_get(self) -> dict[str, Any]:
+    def _cmd_config_get(self, *, refresh: bool = False) -> dict[str, Any]:
         from flydigi.ss4_f4 import ss4_name_for_key_id
 
-        cfg = self._fetch_config()
+        cfg = self._fetch_config(refresh=refresh)
         return {
             "ok": True,
             "config": {
@@ -646,6 +676,7 @@ class Daemon:
                     version=0x0101,
                     bustype=ecodes.BUS_BLUETOOTH,
                 )
+            self._broadcast_presence(True)
             return
 
         iface = obj
@@ -681,6 +712,11 @@ class Daemon:
             )
         except Exception as exc:  # noqa: BLE001
             print(f"flydigi-vader4d: info probe skipped ({exc})", flush=True)
+        try:
+            self._fetch_config(refresh=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"flydigi-vader4d: config prefetch skipped ({exc})", flush=True)
+        self._broadcast_presence(True)
 
     def run(self) -> int:
         def _stop(*_a: object) -> None:
@@ -784,7 +820,10 @@ class Daemon:
         return 0
 
     def _reconnect(self) -> None:
+        self._broadcast_presence(False)
         self._rumble_until = 0.0
+        self._info = None
+        self._cfg_raw = None
         if self.dev:
             try:
                 self.dev.close()
