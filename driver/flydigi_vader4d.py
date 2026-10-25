@@ -282,6 +282,8 @@ class Daemon:
                 self._reply(c, self._cmd_config_set_keys(msg))
             elif cmd == "config_set_motor":
                 self._reply(c, self._cmd_config_set_motor(msg))
+            elif cmd == "config_set_feel":
+                self._reply(c, self._cmd_config_set_feel(msg))
             else:
                 self._reply(c, {"ok": False, "error": f"unknown cmd: {cmd}"})
         except Exception as exc:  # noqa: BLE001 — surface to client
@@ -455,8 +457,7 @@ class Daemon:
             },
         }
 
-    def _cmd_config_set_sticks(self, msg: dict[str, Any]) -> dict[str, Any]:
-        cfg = self._fetch_config()
+    def _patch_sticks(self, cfg, msg: dict[str, Any]) -> None:
         for side, attr in (
             ("left_stick", "left_stick"),
             ("right_stick", "right_stick"),
@@ -470,6 +471,22 @@ class Daemon:
             for field in ("type", "zero", "p0x", "p0y", "p1x", "p1y", "end"):
                 if field in patch:
                     setattr(curve, field, int(patch[field]))
+
+    def _patch_motor(self, cfg, msg: dict[str, Any]) -> None:
+        if "main_switch" in msg:
+            cfg.motor.main_switch = bool(msg["main_switch"])
+        for side in ("left", "right"):
+            patch = msg.get(side)
+            if not patch:
+                continue
+            motor = getattr(cfg.motor, side)
+            for field in ("type", "min", "max", "scale"):
+                if field in patch:
+                    setattr(motor, field, int(patch[field]))
+
+    def _cmd_config_set_sticks(self, msg: dict[str, Any]) -> dict[str, Any]:
+        cfg = self._fetch_config()
+        self._patch_sticks(cfg, msg)
         self._write_config(cfg)
         return {"ok": True}
 
@@ -489,16 +506,15 @@ class Daemon:
 
     def _cmd_config_set_motor(self, msg: dict[str, Any]) -> dict[str, Any]:
         cfg = self._fetch_config()
-        if "main_switch" in msg:
-            cfg.motor.main_switch = bool(msg["main_switch"])
-        for side in ("left", "right"):
-            patch = msg.get(side)
-            if not patch:
-                continue
-            motor = getattr(cfg.motor, side)
-            for field in ("type", "min", "max", "scale"):
-                if field in patch:
-                    setattr(motor, field, int(patch[field]))
+        self._patch_motor(cfg, msg)
+        self._write_config(cfg)
+        return {"ok": True}
+
+    def _cmd_config_set_feel(self, msg: dict[str, Any]) -> dict[str, Any]:
+        """One fetch+write for sticks/triggers and motors (Feel page)."""
+        cfg = self._fetch_config()
+        self._patch_sticks(cfg, msg)
+        self._patch_motor(cfg, msg)
         self._write_config(cfg)
         return {"ok": True}
 

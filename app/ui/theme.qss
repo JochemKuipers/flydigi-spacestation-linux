@@ -378,3 +378,37 @@ QLabel#ManualImage {
   border-radius: 12px;
   padding: 14px;
 }
+
+/* Feel / Buttons */
+QWidget#CurvePreview {
+  border: 1px solid #343842;
+  border-radius: 12px;
+  background-color: #1a1c22;
+}
+
+QPushButton#KeyChip {
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background-color: transparent;
+  color: #d4d0c8;
+}
+
+QPushButton#KeyChip:hover {
+  background-color: #22252e;
+  color: #f2f0eb;
+}
+
+QPushButton#KeyChip:checked {
+  background-color: #2a3142;
+  border-color: #4c8dff;
+  color: #f2f0eb;
+  font-weight: 600;
+}
+
+QLabel#Value {
+  color: #8eb4ff;
+  font-weight: 600;
+  min-width: 42px;
+}

@@ -5,7 +5,6 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, QTimer, Slot
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import (
-    QCheckBox,
     QColorDialog,
     QComboBox,
     QFormLayout,
@@ -20,21 +19,18 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSlider,
-    QSpinBox,
     QStackedWidget,
     QStatusBar,
-    QTableWidget,
-    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
 from flydigi.dinput_proto import build_led
-from flydigi.gamepad_config import KEY_NAMES
 from flydigi.ota import DEFAULT_BIN, usb_ota_ready
 
 from .bridge import DaemonBridge
-from .labels import KEY_LABELS, hotspot_label, key_label
+from .buttons import ButtonsPage
+from .feel import FeelPage
 from .manual import ManualView
 from .widgets import LivePadView, StatChip, logo_pixmap
 from .workers import CatalogFetcher, OtaWorker, start_ota_thread
@@ -83,7 +79,6 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(logo_pixmap(128)))
         self.resize(1100, 740)
         self._color = QColor(76, 141, 255)
-        self._config: dict | None = None
         self._transport = "unknown"
         self._fw_busy = False
         self._fw_pad_version: str | None = None
@@ -122,10 +117,12 @@ class MainWindow(QMainWindow):
 
         self.pages = QStackedWidget()
         self.pages.setObjectName("Pages")
+        self.feel_page = FeelPage(self._rpc)
+        self.buttons_page = ButtonsPage(self._rpc)
         self.pages.addWidget(self._build_overview())
         self.pages.addWidget(self._build_lighting())
-        self.pages.addWidget(self._build_feel())
-        self.pages.addWidget(self._build_buttons())
+        self.pages.addWidget(self.feel_page)
+        self.pages.addWidget(self.buttons_page)
         self.pages.addWidget(self._build_firmware())
         self.pages.addWidget(self._build_manual())
         body.addWidget(self.pages, stretch=1)
@@ -152,9 +149,6 @@ class MainWindow(QMainWindow):
     def _on_nav(self, row: int) -> None:
         if row >= 0:
             self.pages.setCurrentIndex(row)
-            if row == 1 and self._transport != "bluetooth":
-                # soft sync LED UI once when opening Lighting
-                pass
 
     def _build_top(self) -> QWidget:
         bar = QWidget()
@@ -308,144 +302,6 @@ class MainWindow(QMainWindow):
         self._push_led_preview()
         return w
 
-    def _build_feel(self) -> QWidget:
-        w, lay = _page(
-            "Feel",
-            "Stick/trigger curves and motors — same onboard fields Space Station 4 writes "
-            "(deadzone, curve end, motor scale).",
-        )
-        cols = QHBoxLayout()
-        cols.setSpacing(14)
-
-        dz = _card()
-        dz_l = QVBoxLayout(dz)
-        dz_l.setContentsMargins(18, 18, 18, 18)
-        dt = QLabel("Sticks & triggers")
-        dt.setObjectName("CardTitle")
-        dz_l.addWidget(dt)
-        form = QFormLayout()
-        self.dz_left = QSpinBox()
-        self.dz_right = QSpinBox()
-        self.dz_lt = QSpinBox()
-        self.dz_rt = QSpinBox()
-        self.curve_end_ls = QSpinBox()
-        self.curve_end_rs = QSpinBox()
-        for s in (
-            self.dz_left,
-            self.dz_right,
-            self.dz_lt,
-            self.dz_rt,
-            self.curve_end_ls,
-            self.curve_end_rs,
-        ):
-            s.setRange(0, 100)
-        self.curve_end_ls.setValue(100)
-        self.curve_end_rs.setValue(100)
-        form.addRow("Left stick deadzone", self.dz_left)
-        form.addRow("Left stick curve end", self.curve_end_ls)
-        form.addRow("Right stick deadzone", self.dz_right)
-        form.addRow("Right stick curve end", self.curve_end_rs)
-        form.addRow("Left trigger deadzone", self.dz_lt)
-        form.addRow("Right trigger deadzone", self.dz_rt)
-        dz_l.addLayout(form)
-        drow = QHBoxLayout()
-        dload = QPushButton("Reload from pad")
-        dload.clicked.connect(self._load_sticks)
-        dapply = QPushButton("Save to pad")
-        dapply.setObjectName("Primary")
-        dapply.clicked.connect(self._apply_sticks)
-        drow.addWidget(dload)
-        drow.addWidget(dapply)
-        drow.addStretch()
-        dz_l.addLayout(drow)
-        cols.addWidget(dz)
-
-        rb = _card()
-        rb_l = QVBoxLayout(rb)
-        rb_l.setContentsMargins(18, 18, 18, 18)
-        rt = QLabel("Vibration")
-        rt.setObjectName("CardTitle")
-        rb_l.addWidget(rt)
-        rform = QFormLayout()
-        self.rumble_lo = QSlider(Qt.Orientation.Horizontal)
-        self.rumble_hi = QSlider(Qt.Orientation.Horizontal)
-        for s in (self.rumble_lo, self.rumble_hi):
-            s.setRange(0, 255)
-            s.setValue(180)
-        rform.addRow("Low motor", self.rumble_lo)
-        rform.addRow("High motor", self.rumble_hi)
-        rb_l.addLayout(rform)
-        rrow = QHBoxLayout()
-        test = QPushButton("Test")
-        test.setObjectName("Primary")
-        test.clicked.connect(self._rumble_test)
-        stop = QPushButton("Stop")
-        stop.clicked.connect(lambda: self._rpc("rumble", low=0, high=0, duration_ms=0))
-        rrow.addWidget(test)
-        rrow.addWidget(stop)
-        rrow.addStretch()
-        rb_l.addLayout(rrow)
-        self.motor_on = QCheckBox("Motors enabled")
-        self.motor_on.setChecked(True)
-        self.motor_l_scale = QSpinBox()
-        self.motor_r_scale = QSpinBox()
-        for s in (self.motor_l_scale, self.motor_r_scale):
-            s.setRange(0, 100)
-            s.setValue(100)
-        mform = QFormLayout()
-        mform.addRow(self.motor_on)
-        mform.addRow("Left strength", self.motor_l_scale)
-        mform.addRow("Right strength", self.motor_r_scale)
-        rb_l.addLayout(mform)
-        mrow = QHBoxLayout()
-        mload = QPushButton("Reload from pad")
-        mload.clicked.connect(self._load_motor)
-        mapply = QPushButton("Save motor settings")
-        mapply.setObjectName("Primary")
-        mapply.clicked.connect(self._apply_motor)
-        mrow.addWidget(mload)
-        mrow.addWidget(mapply)
-        mrow.addStretch()
-        rb_l.addLayout(mrow)
-        cols.addWidget(rb)
-        lay.addLayout(cols)
-        lay.addStretch()
-        return w
-
-    def _build_buttons(self) -> QWidget:
-        w, lay = _page(
-            "Buttons",
-            "Remap using the SS4 F4 hotspot map. Click a control on the pad, edit the row, then save.",
-        )
-        row = QHBoxLayout()
-        load = QPushButton("Reload from pad")
-        load.setObjectName("Primary")
-        load.clicked.connect(self._load_config)
-        apply = QPushButton("Save to pad")
-        apply.clicked.connect(self._apply_keys)
-        reset = QPushButton("Reset selected to default")
-        reset.clicked.connect(self._reset_key_native)
-        row.addWidget(load)
-        row.addWidget(apply)
-        row.addWidget(reset)
-        row.addStretch()
-        lay.addLayout(row)
-        body = QHBoxLayout()
-        self.map_pad = LivePadView()
-        self.map_pad.setMinimumWidth(420)
-        self.map_pad.hotspot_clicked.connect(self._on_map_hotspot)
-        body.addWidget(self.map_pad, stretch=2)
-        self.key_table = QTableWidget(0, 3)
-        self.key_table.setHorizontalHeaderLabels(["Button", "Maps to", "Rapid fire"])
-        self.key_table.horizontalHeader().setStretchLastSection(True)
-        self.key_table.itemSelectionChanged.connect(self._on_key_row_selected)
-        body.addWidget(self.key_table, stretch=3)
-        lay.addLayout(body, stretch=1)
-        self.btn_status = QLabel("")
-        self.btn_status.setObjectName("Muted")
-        lay.addWidget(self.btn_status)
-        return w
-
     def _build_firmware(self) -> QWidget:
         w, lay = _page(
             "Firmware",
@@ -496,25 +352,24 @@ class MainWindow(QMainWindow):
     def _rpc(self, cmd: str, **kwargs) -> dict:
         try:
             resp = self._bridge.call(cmd, **kwargs)
-        except OSError as exc:
+        except FileNotFoundError as exc:
             QMessageBox.warning(
-                self, "Not connected", f"Cannot reach the driver:\n{exc}"
+                self,
+                "Not connected",
+                "Cannot reach the driver (socket missing).\n"
+                "Is flydigi-vader4d running?",
+            )
+            return {"ok": False, "error": str(exc)}
+        except (ConnectionError, TimeoutError, OSError) as exc:
+            QMessageBox.warning(
+                self,
+                "Driver busy",
+                f"The driver didn’t finish that request:\n{exc}",
             )
             return {"ok": False, "error": str(exc)}
         if not resp.get("ok"):
             QMessageBox.warning(self, "That didn’t work", resp.get("error", "unknown"))
         return resp
-
-    def _require_usb_config(self) -> bool:
-        if self._transport == "bluetooth":
-            QMessageBox.information(
-                self,
-                "Cable or dongle needed",
-                "Lighting, rumble, and button maps need USB or the 2.4 GHz dongle.\n"
-                "Bluetooth is for playing only.",
-            )
-            return False
-        return True
 
     # —— firmware ——
     @Slot()
@@ -781,6 +636,8 @@ class MainWindow(QMainWindow):
         self.detail_name.setText(str(info.get("name") or "Vader 4 Pro"))
         mac = info.get("mac")
         self.detail_mac.setText(f"Serial / MAC  {mac}" if mac else "")
+        self.feel_page.set_transport(self._transport)
+        self.buttons_page.set_transport(self._transport)
         if self._transport == "bluetooth":
             self.detail_note.setText(
                 "Playing over Bluetooth. Plug in USB or the dongle to change lighting and button maps."
@@ -795,198 +652,7 @@ class MainWindow(QMainWindow):
     @Slot(dict)
     def _on_report(self, rep: dict) -> None:
         self.live_pad.set_report(rep)
-        if hasattr(self, "map_pad") and self.map_pad.isVisible():
-            self.map_pad.set_report(rep)
-
-    @Slot(int, str)
-    def _on_map_hotspot(self, key_id: int, ss4_name: str) -> None:
-        label = hotspot_label(ss4_name, key_id if key_id >= 0 else None)
-        if key_id < 0 or key_id >= 32:
-            self.btn_status.setText(f"{label}: not a remappable key-map slot")
-            return
-        for row in range(self.key_table.rowCount()):
-            item = self.key_table.item(row, 0)
-            if item and int(item.data(Qt.ItemDataRole.UserRole)) == key_id:
-                self.key_table.selectRow(row)
-                self.key_table.scrollToItem(item)
-                self.map_pad.set_selected_key(key_id)
-                self.btn_status.setText(f"Selected {label}")
-                return
-        self.btn_status.setText(f"{label} — load map from pad first")
-
-    @Slot()
-    def _on_key_row_selected(self) -> None:
-        rows = {i.row() for i in self.key_table.selectedIndexes()}
-        if len(rows) != 1:
-            return
-        row = next(iter(rows))
-        item = self.key_table.item(row, 0)
-        if not item:
-            return
-        kid = int(item.data(Qt.ItemDataRole.UserRole))
-        if hasattr(self, "map_pad"):
-            self.map_pad.set_selected_key(kid)
-
-    # —— buttons / config ——
-    @Slot()
-    def _load_config(self) -> None:
-        if not self._require_usb_config():
-            return
-        resp = self._rpc("config_get")
-        if not resp.get("ok"):
-            return
-        self._config = resp["config"]
-        keys = self._config.get("keys", [])
-        self.key_table.setRowCount(len(keys))
-        for row, k in enumerate(keys):
-            kid = int(k["id"])
-            label = key_label(kid, k.get("name", ""))
-            if k.get("ss4_name"):
-                label = hotspot_label(str(k["ss4_name"]), kid)
-            self.key_table.setItem(row, 0, QTableWidgetItem(label))
-            combo = QComboBox()
-            combo.addItem("Default (no remap)", 255)
-            for i, _code in enumerate(KEY_NAMES):
-                if i < len(KEY_LABELS) and KEY_LABELS[i] != "—":
-                    combo.addItem(KEY_LABELS[i], i)
-            idx = combo.findData(k["map_id"])
-            if idx < 0:
-                combo.addItem(
-                    key_label(int(k["map_id"]), str(k["map_id"])), k["map_id"]
-                )
-                idx = combo.count() - 1
-            combo.setCurrentIndex(max(0, idx))
-            self.key_table.setCellWidget(row, 1, combo)
-
-            cell = QWidget()
-            hl = QHBoxLayout(cell)
-            hl.setContentsMargins(4, 0, 4, 0)
-            turbo_on = QCheckBox("On")
-            turbo_on.setChecked(int(k.get("turbo_type", 0)) != 0)
-            speed = QSpinBox()
-            speed.setRange(1, 255)
-            speed.setValue(max(1, int(k.get("turbo", 0)) or 10))
-            speed.setEnabled(turbo_on.isChecked())
-            speed.setToolTip("Firmware rapid-fire rate value")
-            turbo_on.toggled.connect(speed.setEnabled)
-            hl.addWidget(turbo_on)
-            hl.addWidget(QLabel("speed"))
-            hl.addWidget(speed)
-            hl.addStretch()
-            self.key_table.setCellWidget(row, 2, cell)
-            self.key_table.item(row, 0).setData(Qt.ItemDataRole.UserRole, kid)
-            cell.setProperty("turbo_on", turbo_on)
-            cell.setProperty("turbo_speed", speed)
-        self.key_table.resizeColumnsToContents()
-        self._load_sticks_from_config()
-        self._load_motor_from_config()
-        self.btn_status.setText(
-            "Loaded from the controller. Edit rows, then Save to pad."
-        )
-
-    def _load_sticks_from_config(self) -> None:
-        if not self._config:
-            return
-        self.dz_left.setValue(int(self._config["left_stick"]["zero"]))
-        self.dz_right.setValue(int(self._config["right_stick"]["zero"]))
-        self.dz_lt.setValue(int(self._config["left_trigger"]["zero"]))
-        self.dz_rt.setValue(int(self._config["right_trigger"]["zero"]))
-        self.curve_end_ls.setValue(int(self._config["left_stick"].get("end", 100)))
-        self.curve_end_rs.setValue(int(self._config["right_stick"].get("end", 100)))
-
-    def _load_motor_from_config(self) -> None:
-        if not self._config:
-            return
-        m = self._config["motor"]
-        self.motor_on.setChecked(bool(m["main_switch"]))
-        self.motor_l_scale.setValue(int(m["left"]["scale"]))
-        self.motor_r_scale.setValue(int(m["right"]["scale"]))
-
-    @Slot()
-    def _apply_keys(self) -> None:
-        if not self._require_usb_config():
-            return
-        keys = []
-        for row in range(self.key_table.rowCount()):
-            kid = self.key_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
-            combo: QComboBox = self.key_table.cellWidget(row, 1)  # type: ignore[assignment]
-            cell = self.key_table.cellWidget(row, 2)
-            turbo_on: QCheckBox = cell.findChild(QCheckBox)  # type: ignore[assignment]
-            speed: QSpinBox = cell.findChild(QSpinBox)  # type: ignore[assignment]
-            keys.append(
-                {
-                    "id": int(kid),
-                    "map_id": int(combo.currentData()),
-                    "turbo_type": 1 if turbo_on.isChecked() else 0,
-                    "turbo": speed.value() if turbo_on.isChecked() else 0,
-                }
-            )
-        resp = self._rpc("config_set_keys", keys=keys)
-        if resp.get("ok"):
-            self.btn_status.setText("Saved to the controller.")
-            self.statusBar().showMessage("Button map saved", 3000)
-
-    @Slot()
-    def _reset_key_native(self) -> None:
-        rows = {i.row() for i in self.key_table.selectedIndexes()}
-        for row in rows:
-            combo: QComboBox = self.key_table.cellWidget(row, 1)  # type: ignore[assignment]
-            combo.setCurrentIndex(0)
-
-    @Slot()
-    def _load_sticks(self) -> None:
-        if not self._require_usb_config():
-            return
-        resp = self._rpc("config_get")
-        if resp.get("ok"):
-            self._config = resp["config"]
-            self._load_sticks_from_config()
-            self.statusBar().showMessage("Deadzones loaded", 2500)
-
-    @Slot()
-    def _apply_sticks(self) -> None:
-        if not self._require_usb_config():
-            return
-        if self._rpc(
-            "config_set_sticks",
-            left_stick={"zero": self.dz_left.value(), "end": self.curve_end_ls.value()},
-            right_stick={
-                "zero": self.dz_right.value(),
-                "end": self.curve_end_rs.value(),
-            },
-            left_trigger={"zero": self.dz_lt.value()},
-            right_trigger={"zero": self.dz_rt.value()},
-        ).get("ok"):
-            self.statusBar().showMessage("Stick/trigger curves saved", 2500)
-
-    @Slot()
-    def _rumble_test(self) -> None:
-        if not self._require_usb_config():
-            return
-        self._rpc(
-            "rumble",
-            low=self.rumble_lo.value(),
-            high=self.rumble_hi.value(),
-            duration_ms=1500,
-        )
-        QTimer.singleShot(400, lambda: self._rpc("rumble", low=0, high=0))
-
-    @Slot()
-    def _load_motor(self) -> None:
-        if not self._require_usb_config():
-            return
-        resp = self._rpc("config_get")
-        if resp.get("ok"):
-            self._config = resp["config"]
-            self._load_motor_from_config()
-
-    @Slot()
-    def _apply_motor(self) -> None:
-        if not self._require_usb_config():
-            return
-        self._rpc(
-            "config_set_motor",
-            main_switch=self.motor_on.isChecked(),
-            left={"scale": self.motor_l_scale.value()},
-            right={"scale": self.motor_r_scale.value()},
-        )
+        if self.feel_page.isVisible():
+            self.feel_page.on_report(rep)
+        if self.buttons_page.isVisible():
+            self.buttons_page.on_report(rep)

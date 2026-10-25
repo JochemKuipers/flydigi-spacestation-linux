@@ -33,6 +33,9 @@ class DaemonClient:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.settimeout(timeout)
         s.connect(str(self.path))
+        # Config read/write on the pad can take several seconds; keep the
+        # connect timeout short but allow long RPC replies.
+        s.settimeout(30.0)
         self._sock = s
 
     def close(self) -> None:
