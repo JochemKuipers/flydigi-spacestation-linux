@@ -76,6 +76,7 @@ USB IF2 is exclusive to the daemon. On BT the daemon grabs `Flydigi VADER4P` so 
 - [docs/protocol.md](docs/protocol.md) — V1 report + IF2 command/config map
 - [docs/bluetooth.md](docs/bluetooth.md) — BT pairing / capture checklist
 - [docs/firmware.md](docs/firmware.md) — F4 HID OTA (IF3) + archived image
+- [docs/windows-vm.md](docs/windows-vm.md) — Windows VM oracle + host usbmon capture
 
 ## Space Station extract
 

@@ -1,5 +1,5 @@
 Name:           flydigi-vader
-Version:        0.1.2
+Version:        0.1.3
 Release:        1%{?dist}
 Summary:        Flydigi Vader 4 Pro Linux driver and companion
 License:        MIT
@@ -63,6 +63,10 @@ udevadm trigger >/dev/null 2>&1 || :
 echo "Enable the driver with: systemctl --user enable --now flydigi-vader4d.service"
 
 %changelog
+* Sun Oct 25 2026 jochem-kuipers <jochem@localhost> - 0.1.3-1
+- OTA start+finish so flashes do not leave the pad wedged; Companion can
+  recover stuck update sessions; Windows VM capture tooling for SS USB traces.
+
 * Sun Oct 25 2026 jochem-kuipers <jochem@localhost> - 0.1.2-1
 - ACK-gated config writes so onboard remaps persist across reconnect.
 

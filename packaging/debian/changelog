@@ -1,3 +1,12 @@
+flydigi-vader (0.1.3-1) unstable; urgency=medium
+
+  * OTA preflight/abort always sends finish so the pad is not left in update
+    mode; Companion detects stuck sessions and offers recovery.
+  * Windows VM oracle helpers (guest-exec/SSH, host usbmon capture) and SS
+    remap Save capture notes.
+
+ -- jochem-kuipers <jochem@localhost>  Sun, 25 Oct 2026 16:50:00 +0100
+
 flydigi-vader (0.1.2-1) unstable; urgency=medium
 
   * ACK-gated gamepad config writes so remaps/feel actually persist across

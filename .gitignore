@@ -3,6 +3,8 @@ vendor/
 .wine-extract/
 .wine-ss3/
 captures/*.bin
+captures/*.pcap
+captures/*.pcapng
 *.zip
 captures/*.reasnap
 *.exe
@@ -16,8 +18,9 @@ Flydigi Space Station_setup_*.exe
 !archive/**/*.json
 !archive/**/SHA256SUMS
 
-# Keep docs and small capture text / descriptors
+# Keep docs and small capture text / descriptors / summaries
 !captures/*.txt
+!captures/*.SUMMARY.md
 !captures/report-descriptors/
 !captures/report-descriptors/**
 
@@ -39,3 +42,7 @@ packaging/**/*.AppImage
 .idea/
 .vscode/
 .claude/
+
+# Windows VM agent key (local)
+tools/win10_agent_ed25519
+tools/win10_agent_ed25519.pub
