@@ -29,6 +29,7 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+.ruff_cache/
 
 # IDE / agent
 .idea/
