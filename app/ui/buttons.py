@@ -1,4 +1,4 @@
-"""Buttons page — pad-first remap + keyboard/combo/macro (SS4-style)."""
+"""Buttons page — pad remap, keyboard, combo, macro, turbo."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ REMAP_KEYS: list[int] = [
     if name != "?" and i < len(KEY_LABELS) and KEY_LABELS[i] != "—"
 ]
 
-# SS4-style tabs: Click / Turbo / Keyboard / Combo / Macro
+# Mapping modes: Click / Turbo / Keyboard / Combo / Macro
 MODE_CONTROLLER = "controller"
 MODE_TURBO = "turbo"
 MODE_KEYBOARD = "keyboard"
@@ -158,8 +158,8 @@ class ButtonsPage(QWidget):
         title = QLabel("Buttons")
         title.setObjectName("PageTitle")
         lead = QLabel(
-            "Pick a control from the list or the pad, then choose what it should send. "
-            "Pad remaps write onboard; keyboard / combo / macro run through the driver."
+            "Pick a control from the list or the pad, then choose what it should send — "
+            "another button, a keyboard key, a combo, a short macro, or turbo."
         )
         lead.setObjectName("PageLead")
         lead.setWordWrap(True)
@@ -320,7 +320,7 @@ class ButtonsPage(QWidget):
         l3.addWidget(QLabel("Sequence"))
         l3.addWidget(self.macro_steps)
         tip = QLabel(
-            "Each name is pressed briefly in order (Space Station-style onboard macros are a later step)."
+            "Each key is pressed briefly in order when you trigger the macro."
         )
         tip.setObjectName("Muted")
         tip.setWordWrap(True)

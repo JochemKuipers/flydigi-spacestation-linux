@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Flydigi Space Station (Linux) — Vader 4 Pro companion entrypoint."""
+"""Vader 4 Pro companion for Linux — app entrypoint."""
 
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ from app.ui import MainWindow, apply_theme
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName("Flydigi Space Station Linux")
-    app.setOrganizationName("flydigi-spacestation-linux")
+    app.setApplicationName("Vader 4 Pro")
+    app.setOrganizationName("flydigi")
     apply_theme(app)
     win = MainWindow()
     win.show()

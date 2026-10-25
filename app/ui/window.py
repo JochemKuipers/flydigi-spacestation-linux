@@ -82,6 +82,8 @@ class MainWindow(QMainWindow):
         self._transport = "unknown"
         self._fw_busy = False
         self._fw_pad_version: str | None = None
+        self._fw_startup_check = False  # one silent catalog check after pad fw known
+        self._fw_update_prompted = False
         self._ota_worker: OtaWorker | None = None
         # Sliders fire valueChanged on every tick — debounce preview + pad write.
         self._led_preview_timer = QTimer(self)
@@ -131,9 +133,7 @@ class MainWindow(QMainWindow):
 
         sb = QStatusBar()
         self.setStatusBar(sb)
-        sb.showMessage(
-            "Start the driver if nothing connects: python3 driver/flydigi_vader4d.py"
-        )
+        sb.showMessage("Connect your controller to get started.")
 
         self._bridge = DaemonBridge()
         self._bridge.status.connect(self._on_status)
@@ -347,7 +347,7 @@ class MainWindow(QMainWindow):
     def _build_manual(self) -> QWidget:
         w, lay = _page(
             "Manual",
-            "Force sticks, pairing, specs, and Q&A — structured from Flydigi’s official PDF.",
+            "Force sticks, pairing, specs, and answers to common questions.",
         )
         lay.addWidget(ManualView(), stretch=1)
         return w
@@ -359,15 +359,15 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(
                 self,
                 "Not connected",
-                "Cannot reach the driver (socket missing).\n"
-                "Is flydigi-vader4d running?",
+                "Can’t reach the controller service.\n"
+                "Make sure the companion service is running.",
             )
             return {"ok": False, "error": str(exc)}
         except (ConnectionError, TimeoutError, OSError) as exc:
             QMessageBox.warning(
                 self,
-                "Driver busy",
-                f"The driver didn’t finish that request:\n{exc}",
+                "Please try again",
+                f"The controller didn’t finish that request:\n{exc}",
             )
             return {"ok": False, "error": str(exc)}
         if not resp.get("ok"):
@@ -375,6 +375,12 @@ class MainWindow(QMainWindow):
         return resp
 
     # —— firmware ——
+    def _fw_maybe_startup_check(self) -> None:
+        if self._fw_startup_check or not self._fw_pad_version or self._catalog.busy:
+            return
+        self._fw_startup_check = True
+        self._catalog.start()
+
     @Slot()
     def _fw_check_catalog(self) -> None:
         if self._catalog.busy:
@@ -395,14 +401,34 @@ class MainWindow(QMainWindow):
             )
         elif pad:
             self.fw_status.setText(f"Update available: {pad} → {ver}")
+            self._fw_offer_update(pad, str(ver))
         else:
             self.fw_status.setText("Online check OK.")
+
+    def _fw_offer_update(self, pad: str, ver: str) -> None:
+        if self._fw_update_prompted:
+            return
+        self._fw_update_prompted = True
+        msg = f"Firmware update available: {pad} → {ver}"
+        self.statusBar().showMessage(msg, 12_000)
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setWindowTitle("Firmware update")
+        box.setText(msg)
+        box.setInformativeText("Open Firmware to install over USB or the dongle.")
+        go = box.addButton("Open Firmware", QMessageBox.ButtonRole.AcceptRole)
+        box.addButton("Later", QMessageBox.ButtonRole.RejectRole)
+        box.exec()
+        if box.clickedButton() is go:
+            self.nav.setCurrentRow(NAV.index("Firmware"))
 
     @Slot(str)
     def _fw_catalog_fail(self, msg: str) -> None:
         self.fw_check_btn.setEnabled(True)
-        self.fw_catalog_label.setText("Latest online: couldn’t reach Flydigi")
-        self.fw_status.setText(msg)
+        # Silent startup miss — only surface errors from a manual check.
+        if self.fw_status.text() == "Checking…":
+            self.fw_catalog_label.setText("Latest online: couldn’t reach Flydigi")
+            self.fw_status.setText(msg)
 
     @Slot()
     def _fw_flash(self) -> None:
@@ -494,7 +520,7 @@ class MainWindow(QMainWindow):
             self.color_btn.setStyleSheet("")
         elif mode == 1:
             self.color_hint.setText(
-                "Flow uses Space Station’s rainbow chase — color picker unused."
+                "Flow runs a built-in rainbow chase — color picker unused."
             )
             self.color_btn.setText("rainbow")
             self.color_btn.setStyleSheet(
@@ -629,6 +655,7 @@ class MainWindow(QMainWindow):
             self._fw_pad_version = str(fw)
             self.fw_pad_label.setText(f"On this controller: {fw}")
             self.chip_fw.set_value(str(fw))
+            self._fw_maybe_startup_check()
         batt = info.get("battery")
         self.chip_battery.set_value(f"{batt}%" if batt is not None else "—")
         self.chip_link.set_value(link)

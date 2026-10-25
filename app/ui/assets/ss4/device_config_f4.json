@@ -1,5 +1,5 @@
 {
-  "source": "Space Station 4.2.2.3",
+  "source": "Vader 4 Pro overlay layout",
   "asar_path": "resources/app.asar \u2192 device_config_f4-*.js",
   "device": "f4",
   "viewBox": {

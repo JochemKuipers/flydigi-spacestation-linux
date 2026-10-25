@@ -1,4 +1,4 @@
-"""Feel page — stick/trigger curves + motors (SS4-style)."""
+"""Feel page — stick/trigger curves + motors."""
 
 from __future__ import annotations
 
@@ -150,7 +150,7 @@ class CurvePreview(QWidget):
 
 
 class FeelPage(QWidget):
-    """Sticks/triggers + vibration — one save path, live curve like Space Station."""
+    """Sticks/triggers + vibration — curves and motors."""
 
     TARGETS = (
         ("left_stick", "Left stick"),
@@ -175,8 +175,8 @@ class FeelPage(QWidget):
         title = QLabel("Feel")
         title.setObjectName("PageTitle")
         lead = QLabel(
-            "Center deadzone and outer limit for each stick/trigger, plus motor strength. "
-            "Same onboard curve fields Space Station writes."
+            "Tune deadzones and response limits for each stick and trigger, "
+            "and set how strong the motors feel."
         )
         lead.setObjectName("PageLead")
         lead.setWordWrap(True)

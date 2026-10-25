@@ -63,7 +63,7 @@ class DaemonBridge(QObject):
                 client.connect(timeout=1.0)
                 self._client = client
             except OSError:
-                if not self._emit(self.status, "Waiting for driver…"):
+                if not self._emit(self.status, "Waiting for controller…"):
                     return
                 self._stop.wait(1.0)
                 continue

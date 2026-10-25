@@ -309,7 +309,7 @@ class LivePadView(QWidget):
             p.drawText(
                 QRectF(0, 0, vw, vh),
                 int(Qt.AlignmentFlag.AlignCenter),
-                "Missing SS4 F4 wireframe",
+                "Controller preview unavailable",
             )
         if self._show_led:
             self._paint_led_v(p)
