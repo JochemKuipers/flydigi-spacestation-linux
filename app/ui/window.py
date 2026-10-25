@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
     QSlider,
     QSpinBox,
     QStackedWidget,
@@ -244,20 +245,25 @@ class MainWindow(QMainWindow):
         )
         cols = QHBoxLayout()
         cols.setSpacing(14)
+        cols.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         prev = _card()
         pl = QVBoxLayout(prev)
         pl.setContentsMargins(12, 12, 12, 12)
         # Lighting canvas: wireframe + LED only (no hotspot/input churn)
         self.led_preview = LivePadView(show_hotspots=False, follow_input=False)
+        self.led_preview.setMinimumSize(360, 280)
         self.led_preview.set_connected(True)
         pl.addWidget(self.led_preview)
         cols.addWidget(prev, stretch=3)
 
         card = _card()
+        # Don't stretch the short form to the preview height — that was the empty slab
+        card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         form = QFormLayout(card)
-        form.setContentsMargins(18, 18, 18, 18)
-        form.setSpacing(12)
+        form.setContentsMargins(18, 16, 18, 16)
+        form.setSpacing(10)
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         self.led_mode = QComboBox()
         for value, name in LED_MODES:
             self.led_mode.addItem(name, value)
@@ -286,8 +292,8 @@ class MainWindow(QMainWindow):
         hint.setObjectName("Muted")
         hint.setWordWrap(True)
         form.addRow(hint)
-        cols.addWidget(card, stretch=2)
-        lay.addLayout(cols)
+        cols.addWidget(card, stretch=2, alignment=Qt.AlignmentFlag.AlignTop)
+        lay.addLayout(cols, stretch=1)
 
         self.led_mode.currentIndexChanged.connect(
             lambda _i: self._led_schedule(preview_now=True)
