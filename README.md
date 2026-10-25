@@ -41,7 +41,7 @@ python3 app/flydigi_ctl.py rumble 255 255 --ms 1500
 python3 app/flydigi_ctl.py led-set --r 0 --g 255 --b 0 --brightness 80
 
 # Companion UI
-python3 app/spacestation_linux.py
+python3 app/vader_companion.py
 
 # Firmware (wired DInput; IF3) — or use the Firmware tab
 python3 scripts/ota-flash.py          # prompts YES
@@ -56,7 +56,7 @@ The daemon creates a uinput device named **Flydigi Vader 4 Pro** and listens on 
 USB IF2 hidraw  ─┐
                  ├──► flydigi-vader4d ──► uinput (games)
 BT VADER4P evdev─┘         │
-                           └── Unix socket ──► spacestation_linux / flydigi_ctl
+                           └── Unix socket ──► vader_companion / flydigi_ctl
 ```
 
 USB IF2 is exclusive to the daemon. On BT the daemon grabs `Flydigi VADER4P` so `KEY_ENTER` (Z) does not type into the desktop.

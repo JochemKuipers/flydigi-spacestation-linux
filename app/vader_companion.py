@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vader 4 Pro companion for Linux — app entrypoint."""
+"""Vader Companion — Vader 4 Pro app for Linux."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from app.ui import MainWindow, apply_theme
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName("Vader 4 Pro")
+    app.setApplicationName("Vader Companion")
     app.setOrganizationName("flydigi")
     apply_theme(app)
     win = MainWindow()

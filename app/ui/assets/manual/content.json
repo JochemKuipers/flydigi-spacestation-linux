@@ -31,30 +31,30 @@
         },
         {
           "type": "heading",
-          "text": "Flydigi Space Station"
+          "text": "Customize on Linux"
         },
         {
           "type": "para",
-          "text": "Download Space Station from www.flydigi.com to customize key mappings, macros, motion sensing, and stick curves. This Linux companion covers the same onboard settings over USB / dongle."
+          "text": "Use this app over USB or the wireless dongle to remap buttons, set keyboard shortcuts and macros, tune stick and trigger feel, and change lighting. Bluetooth is great for play; plug in a cable or the dongle when you want to save settings."
         },
         {
           "type": "cards",
           "items": [
             {
-              "title": "Key mapping",
-              "text": "Map pad, keyboard, and mouse buttons."
+              "title": "Buttons",
+              "text": "Remap controls, keyboard keys, combos, macros, and turbo."
             },
             {
-              "title": "Macros",
-              "text": "Record stick and button sequences."
+              "title": "Feel",
+              "text": "Deadzones, response limits, and motor strength."
             },
             {
-              "title": "Motion sensing",
-              "text": "Map gyro to stick or mouse for aiming."
+              "title": "Lighting",
+              "text": "Modes, brightness, speed, and color."
             },
             {
-              "title": "Joystick curves",
-              "text": "Deadzones and sensitivity curves."
+              "title": "Firmware",
+              "text": "Check for updates and install over USB or the dongle."
             }
           ]
         }
@@ -112,7 +112,7 @@
         },
         {
           "type": "note",
-          "text": "On Linux, flydigi-vader4d only owns the native DInput path (USB / dongle). It does not take over or spoof XInput — if the pad is in XInput mode, that stays stock kernel/Xbox behaviour. This companion uses DInput over USB or the 2.4 GHz dongle for lighting and config; Bluetooth is fine for play, but config writes need a cable or the dongle."
+          "text": "On Linux, lighting and settings work in DInput over USB or the 2.4 GHz dongle. If the pad is in XInput mode, games still see a normal Xbox-style controller. Bluetooth is fine for play; plug in a cable or the dongle when you want to change lighting or save mappings."
         }
       ]
     },
@@ -205,7 +205,7 @@
         },
         {
           "type": "note",
-          "text": "XInput is the main PC mode for game compatibility (Xbox emulation). Prefer DInput when you need real gyro — XInput does not expose it properly. On Linux, our driver only handles DInput; XInput is left alone on stock behaviour."
+          "text": "XInput is the main PC mode for game compatibility (Xbox-style). Prefer DInput when you need real gyro — XInput does not expose it properly. On Linux, use DInput with USB or the dongle for lighting and settings."
         },
         {
           "type": "heading",
@@ -277,12 +277,12 @@
         {
           "type": "qa",
           "q": "How do I update firmware?",
-          "a": "Use Flydigi Space Station on PC or Flydigi Game Center on phone, and follow the in-app update steps. On Linux, the Firmware tab in this companion can flash the archived F4 image over wired USB."
+          "a": "Open the Firmware page in this app, check for updates, and install over USB or the wireless dongle. Keep the cable or dongle connected until the update finishes."
         },
         {
           "type": "qa",
           "q": "Joystick, trigger, or motion sensing feels wrong.",
-          "a": "In Space Station open the testing page and run calibration. Recheck deadzones and curves after calibrating."
+          "a": "Open Feel and recheck deadzones and response limits. If it still feels off, follow the calibration steps in Flydigi’s official online manual, then fine-tune Feel again."
         }
       ]
     }

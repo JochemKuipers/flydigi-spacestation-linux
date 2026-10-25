@@ -80,7 +80,7 @@ class ManualView(QWidget):
         pdf_btn = QPushButton("Open bundled PDF")
         pdf_btn.clicked.connect(self._open_pdf)
         tip = QLabel(
-            "Extracted from Flydigi’s PDF — online copy wins if anything disagrees."
+            "If anything differs from Flydigi’s site, the online manual is the source of truth."
         )
         tip.setObjectName("Muted")
         tip.setWordWrap(True)

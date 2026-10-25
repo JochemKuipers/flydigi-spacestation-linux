@@ -75,7 +75,7 @@ def _page(title: str, lead: str) -> tuple[QWidget, QVBoxLayout]:
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Vader 4 Pro")
+        self.setWindowTitle("Vader Companion")
         self.setWindowIcon(QIcon(logo_pixmap(128)))
         self.resize(1100, 740)
         self._color = QColor(76, 141, 255)
@@ -162,9 +162,9 @@ class MainWindow(QMainWindow):
         row.addWidget(self.logo)
         titles = QVBoxLayout()
         titles.setSpacing(0)
-        title = QLabel("Vader 4 Pro")
+        title = QLabel("Vader Companion")
         title.setObjectName("AppTitle")
-        sub = QLabel("Controller companion for Linux")
+        sub = QLabel("For the Flydigi Vader 4 Pro")
         sub.setObjectName("AppSubtitle")
         titles.addWidget(title)
         titles.addWidget(sub)
