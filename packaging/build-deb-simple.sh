@@ -1,18 +1,43 @@
 #!/usr/bin/env bash
-# Build .deb packages from staged FHS trees (works on Arch with `pacman -S dpkg`).
+# Build .deb packages from staged FHS trees.
+# Prefers dpkg-deb; falls back to tar+ar (works on Arch without the dpkg package).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="$(cat "$ROOT/VERSION")"
 DIST="$ROOT/dist"
 BUILD="$ROOT/build/deb-simple"
 
-command -v dpkg-deb >/dev/null || {
-  echo "dpkg-deb not found. Install with: sudo pacman -S dpkg" >&2
-  exit 1
-}
-
 rm -rf "$BUILD"
 mkdir -p "$DIST" "$BUILD"
+
+pack_deb() {
+  local root="$1" out="$2"
+  if command -v dpkg-deb >/dev/null; then
+    dpkg-deb --root-owner-group --build "$root" "$out"
+    return
+  fi
+  command -v ar >/dev/null || {
+    echo "Need dpkg-deb or binutils ar to build .deb files" >&2
+    exit 1
+  }
+  local work
+  work="$(mktemp -d)"
+  (
+    cd "$root"
+    tar --owner=0 --group=0 --numeric-owner \
+      --exclude='./DEBIAN' -cJf "$work/data.tar.xz" .
+    cd DEBIAN
+    tar --owner=0 --group=0 --numeric-owner -cJf "$work/control.tar.xz" .
+  )
+  printf '2.0\n' >"$work/debian-binary"
+  rm -f "$out"
+  (
+    cd "$work"
+    ar r "$out" debian-binary control.tar.xz data.tar.xz
+  )
+  rm -rf "$work"
+  echo "built $out (ar fallback)"
+}
 
 stage_and_pack() {
   local name="$1" what="$2" depends="$3" desc="$4"
@@ -51,7 +76,7 @@ fi
 EOF
     chmod 755 "$root/DEBIAN/postinst"
   fi
-  dpkg-deb --root-owner-group --build "$root" "$DIST/${name}_${VERSION}-1_all.deb"
+  pack_deb "$root" "$DIST/${name}_${VERSION}-1_all.deb"
 }
 
 stage_and_pack flydigi-vader4d driver \

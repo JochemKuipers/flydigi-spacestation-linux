@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g. v0.1.0)"
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set version
+        id: ver
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          TAG="${TAG#refs/tags/}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            dpkg-dev rpm python3-evdev binutils xz-utils curl
+
+      - name: Build .deb packages
+        run: ./packaging/build-deb-simple.sh
+
+      - name: Build .rpm packages
+        run: |
+          if command -v rpmbuild >/dev/null; then
+            ./packaging/build-rpm.sh || echo "rpm build skipped/failed"
+          fi
+
+      - name: Build AppImage
+        run: |
+          chmod +x packaging/companion/appimage/build-appimage.sh
+          ./packaging/companion/appimage/build-appimage.sh || echo "AppImage build skipped/failed"
+
+      - name: Collect artifacts
+        id: arts
+        run: |
+          mkdir -p dist
+          ls -la dist || true
+          # Source tarball matching GitHub archive layout
+          VER="${{ steps.ver.outputs.version }}"
+          git archive --format=tar.gz --prefix="flydigi-spacestation-linux-${VER}/" \
+            -o "dist/flydigi-spacestation-linux-${VER}.tar.gz" HEAD
+          ls -la dist
+
+      - name: Create / update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.ver.outputs.tag }}"
+          VER="${{ steps.ver.outputs.version }}"
+          NOTES="$(cat <<EOF
+          ## Vader Companion / flydigi-vader4d ${VER}
+
+          ### Packages
+          - \`flydigi-vader4d\` — driver + udev + user systemd unit
+          - \`vader-companion\` — Qt companion UI
+
+          ### Install (Debian/Ubuntu via personal APT)
+          \`\`\`sh
+          curl -fsSL https://jochemkuipers.github.io/apt-repo/jochem.sources \\
+            | sudo tee /etc/apt/sources.list.d/jochem.sources
+          sudo apt update
+          sudo apt install flydigi-vader4d vader-companion
+          systemctl --user enable --now flydigi-vader4d.service
+          \`\`\`
+
+          ### Arch (AUR)
+          \`\`\`sh
+          yay -S flydigi-vader4d vader-companion
+          systemctl --user enable --now flydigi-vader4d.service
+          \`\`\`
+          EOF
+          )"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "v${VER}" --notes "$NOTES"
+          fi
