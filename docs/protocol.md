@@ -36,7 +36,7 @@ Responses are non-`04 FE` packets; many put the echoed command ID in byte `[15]`
 
 | Cmd | Name | Notes |
 |-----|------|-------|
-| `0x0F` (15) | Haptic / rumble | OUT report 5, 32 B: `[5, 0x0F, lo, hi, 0…]` (SDL V1 high-bytes). Motors need ~25 ms refresh while active — one-shot feels dead (**O**, live-verified 2026-10-24) |
+| `0x0F` (15) | Haptic / rumble | OUT report 5, **32 B** (HID count 31): `[5, 0x0F, lo, hi, 0…]`. SDL only fills the first 4 B; send the full report (short writes can grind). Refresh ~10–25 ms while active. (Do **not** confuse with 12 B config cmds — those must stay short on fw 6.9.x.) |
 | 17 | Dongle version | response `[4, 17, FW_L, FW_H]` (**C**) |
 | 229 | Read LED config | parcels; byte `[15]==229`, chunk idx in `[3]`, 10 data bytes `[5:15]`; **49** chunks (**C**/**O**) |
 | 231 | Write LED start | followed by inner parcels cmd **51** (**C**) |

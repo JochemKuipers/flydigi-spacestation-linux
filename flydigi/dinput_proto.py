@@ -420,10 +420,12 @@ class DInputDevice:
         self.write_raw(bytes(buf))
 
     def rumble(self, low: int, high: int) -> None:
-        """V1 haptic on OUT report 5 (HID report count 31 → write 32 bytes).
+        """V1 haptic on OUT report 5 (HID: report ID 5, 31×8-bit fields → 32 B).
 
-        SDL packs Uint16 rumble as high bytes into [2]/[3]; motors need the
-        packet refreshed ~every 20–50 ms while active (one-shot feels dead).
+        Wire format matches SDL's bytes 0–3: ``[5, 0x0F, lo, hi]``, then zeros
+        to the full report length. (Short 4 B writes can make motors grind;
+        zero-padding *12 B config* cmds to 32 B is a separate fw 6.9.x issue.)
+        Refresh about every 10–25 ms while active — one-shot feels dead.
         """
         lo = max(0, min(255, int(low)))
         hi = max(0, min(255, int(high)))

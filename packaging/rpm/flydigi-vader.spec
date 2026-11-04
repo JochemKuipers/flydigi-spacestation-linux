@@ -46,6 +46,7 @@ cp -a %{_builddir}/stage-companion/. %{buildroot}/
 /usr/lib/python3.*/site-packages/flydigi
 /usr/lib/python3.*/site-packages/driver
 /usr/lib/systemd/user/flydigi-vader4d.service
+/usr/lib/udev/rules.d/69-flydigi-vader4-hide-raw.rules
 /usr/lib/udev/rules.d/99-flydigi-vader4.rules
 /usr/share/doc/flydigi-vader4d/
 

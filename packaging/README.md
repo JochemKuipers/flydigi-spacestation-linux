@@ -71,6 +71,7 @@ The AppImage bundles PySide6/evdev. The **driver is not inside the AppImage** â€
 /usr/bin/flydigi-ctl
 /usr/bin/vader-companion
 /usr/lib/systemd/user/flydigi-vader4d.service
+/usr/lib/udev/rules.d/69-flydigi-vader4-hide-raw.rules
 /usr/lib/udev/rules.d/99-flydigi-vader4.rules
 /usr/share/applications/vader-companion.desktop
 /usr/share/vader-companion/firmware/*.bin

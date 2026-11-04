@@ -100,7 +100,112 @@ CAP = {
             AbsInfo(value=0, min=-1, max=1, fuzz=0, flat=0, resolution=0),
         ),
     ],
+    # Dolphin (and SDL) probe EV_FF/FF_RUMBLE before exposing rumble motors.
+    ecodes.EV_FF: [ecodes.FF_RUMBLE],
 }
+
+# Dolphin uploads Strong + Weak as separate effects; keep a few spare slots.
+FF_MAX_EFFECTS = 8
+
+# Shared phys so Dolphin can relate pad + motion nodes (combine also needs uniq,
+# which uinput cannot set — motion still appears as its own evdev device).
+UINPUT_PHYS = "flydigi-vader4d"
+
+# Linux INPUT_PROP_ACCELEROMETER device: ABS_X/Y/Z = accel (res = units/g),
+# ABS_RX/RY/RZ = gyro (res = units per deg/s). Scales match SDL hidapi_flydigi
+# for Vader 4 Pro (incl. axis sign flips).
+ACCEL_RES_PER_G = 256
+GYRO_RES_PER_DPS = 1024
+# deg/s at raw ±32767 — SDL gyroScale magnitudes before rad conversion.
+_GYRO_DPS_FULLSCALE = (-72000.0, -72000.0, -1200.0)
+_GYRO_ABS_MAX = int(72000 * GYRO_RES_PER_DPS)
+
+MOTION_CAP = {
+    ecodes.EV_ABS: [
+        (
+            ecodes.ABS_X,
+            AbsInfo(
+                value=0,
+                min=-32768,
+                max=32767,
+                fuzz=16,
+                flat=0,
+                resolution=ACCEL_RES_PER_G,
+            ),
+        ),
+        (
+            ecodes.ABS_Y,
+            AbsInfo(
+                value=0,
+                min=-32768,
+                max=32767,
+                fuzz=16,
+                flat=0,
+                resolution=ACCEL_RES_PER_G,
+            ),
+        ),
+        (
+            ecodes.ABS_Z,
+            AbsInfo(
+                value=0,
+                min=-32768,
+                max=32767,
+                fuzz=16,
+                flat=0,
+                resolution=ACCEL_RES_PER_G,
+            ),
+        ),
+        (
+            ecodes.ABS_RX,
+            AbsInfo(
+                value=0,
+                min=-_GYRO_ABS_MAX,
+                max=_GYRO_ABS_MAX,
+                fuzz=16,
+                flat=0,
+                resolution=GYRO_RES_PER_DPS,
+            ),
+        ),
+        (
+            ecodes.ABS_RY,
+            AbsInfo(
+                value=0,
+                min=-_GYRO_ABS_MAX,
+                max=_GYRO_ABS_MAX,
+                fuzz=16,
+                flat=0,
+                resolution=GYRO_RES_PER_DPS,
+            ),
+        ),
+        (
+            ecodes.ABS_RZ,
+            AbsInfo(
+                value=0,
+                min=-_GYRO_ABS_MAX,
+                max=_GYRO_ABS_MAX,
+                fuzz=16,
+                flat=0,
+                resolution=GYRO_RES_PER_DPS,
+            ),
+        ),
+    ],
+}
+
+
+def _ff_mag_to_byte(magnitude: int) -> int:
+    """Map Linux FF 0..0xffff rumble magnitude → Flydigi motor byte 0..255."""
+    return max(0, min(255, int(magnitude) >> 8))
+
+
+def _motion_axes(accel: tuple[int, int, int], gyro: tuple[int, int, int]) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+    """Map V1 raw IMU → Linux accelerometer-prop axes (SDL Vader 4 orientation)."""
+    ax = -int(accel[0])
+    ay = int(accel[1])
+    az = int(accel[2])
+    gx = int(round(gyro[0] * _GYRO_DPS_FULLSCALE[0] / 32767.0 * GYRO_RES_PER_DPS))
+    gy = int(round(gyro[1] * _GYRO_DPS_FULLSCALE[1] / 32767.0 * GYRO_RES_PER_DPS))
+    gz = int(round(gyro[2] * _GYRO_DPS_FULLSCALE[2] / 32767.0 * GYRO_RES_PER_DPS))
+    return (ax, ay, az), (gx, gy, gz)
 
 
 def wait_for_device(timeout: float | None = None):
@@ -187,7 +292,9 @@ class Daemon:
         self.dev: DInputDevice | None = None
         self.bt: BtEvdevReader | None = None
         self.ui: UInput | None = None
+        self.motion: UInput | None = None
         self._last: dict[str, object] = {}
+        self._motion_last: dict[str, int] = {}
         self._info: DeviceInfo | None = None
         self._clients: list[socket.socket] = []
         self._subscribers: set[socket.socket] = set()
@@ -200,7 +307,166 @@ class Daemon:
         self._rumble_hi = 0
         self._rumble_until = 0.0
         self._rumble_last = 0.0
+        # uinput force-feedback (Dolphin evdev Strong/Weak, SDL, etc.)
+        self._ff_effects: dict[int, tuple[int, int]] = {}
+        self._ff_playing: set[int] = set()
         self.actions = ActionPlayer()
+
+    def _make_uinput(
+        self,
+        *,
+        vendor: int,
+        product: int,
+        version: int,
+        bustype: int,
+    ) -> UInput:
+        return UInput(
+            CAP,
+            name="Flydigi Vader 4 Pro",
+            vendor=vendor,
+            product=product,
+            version=version,
+            bustype=bustype,
+            phys=UINPUT_PHYS,
+            max_effects=FF_MAX_EFFECTS,
+        )
+
+    def _make_motion_uinput(
+        self,
+        *,
+        vendor: int,
+        product: int,
+        version: int,
+        bustype: int,
+    ) -> UInput:
+        return UInput(
+            MOTION_CAP,
+            name="Flydigi Vader 4 Pro Motion",
+            vendor=vendor,
+            product=product,
+            version=version,
+            bustype=bustype,
+            phys=UINPUT_PHYS,
+            input_props=[ecodes.INPUT_PROP_ACCELEROMETER],
+        )
+
+    def _close_uinput(self) -> None:
+        if self.motion is not None:
+            try:
+                self.motion.close()
+            except OSError:
+                pass
+            self.motion = None
+        self._motion_last.clear()
+        if self.ui is not None:
+            try:
+                self.ui.close()
+            except OSError:
+                pass
+            self.ui = None
+        self._clear_ff()
+
+    def _clear_ff(self) -> None:
+        self._ff_effects.clear()
+        self._ff_playing.clear()
+
+    def _recompute_ff_rumble(self) -> None:
+        """Merge active FF effects into the USB rumble pump."""
+        lo = 0
+        hi = 0
+        for eid in self._ff_playing:
+            elo, ehi = self._ff_effects.get(eid, (0, 0))
+            lo = max(lo, elo)
+            hi = max(hi, ehi)
+        self._rumble_lo = lo
+        self._rumble_hi = hi
+        if lo or hi:
+            # Keep refreshing until EV_FF stop / erase (no wall-clock end).
+            self._rumble_until = float("inf")
+            self._rumble_last = 0.0
+            self._pump_rumble(force=True)
+        else:
+            self._rumble_until = 0.0
+            self._rumble_lo = 0
+            self._rumble_hi = 0
+            if self.mode == "usb" and self.dev is not None:
+                try:
+                    self.dev.rumble(0, 0)
+                except OSError as exc:
+                    print(f"flydigi-vader4d: rumble stop failed: {exc}", flush=True)
+
+    def _handle_uinput_ff(self) -> None:
+        """Service EV_UINPUT upload/erase + EV_FF play/stop on the uinput fd."""
+        ui = self.ui
+        if ui is None:
+            return
+        try:
+            events = list(ui.read())
+        except BlockingIOError:
+            return
+        except OSError as exc:
+            print(f"flydigi-vader4d: uinput ff read failed: {exc}", flush=True)
+            return
+        for ev in events:
+            if ev.type == ecodes.EV_UINPUT:
+                if ev.code == ecodes.UI_FF_UPLOAD:
+                    try:
+                        upload = ui.begin_upload(ev.value)
+                    except OSError as exc:
+                        print(
+                            f"flydigi-vader4d: FF upload begin failed: {exc}",
+                            flush=True,
+                        )
+                        continue
+                    effect = upload.effect
+                    if effect.type == ecodes.FF_RUMBLE:
+                        rumble = effect.u.ff_rumble_effect
+                        self._ff_effects[effect.id] = (
+                            _ff_mag_to_byte(rumble.strong_magnitude),
+                            _ff_mag_to_byte(rumble.weak_magnitude),
+                        )
+                        # Live parameter update while already playing (Dolphin).
+                        if effect.id in self._ff_playing:
+                            self._recompute_ff_rumble()
+                    upload.retval = 0
+                    try:
+                        ui.end_upload(upload)
+                    except OSError as exc:
+                        print(
+                            f"flydigi-vader4d: FF upload end failed: {exc}",
+                            flush=True,
+                        )
+                elif ev.code == ecodes.UI_FF_ERASE:
+                    try:
+                        erase = ui.begin_erase(ev.value)
+                    except OSError as exc:
+                        print(
+                            f"flydigi-vader4d: FF erase begin failed: {exc}",
+                            flush=True,
+                        )
+                        continue
+                    eid = int(erase.effect_id)
+                    self._ff_effects.pop(eid, None)
+                    self._ff_playing.discard(eid)
+                    erase.retval = 0
+                    try:
+                        ui.end_erase(erase)
+                    except OSError as exc:
+                        print(
+                            f"flydigi-vader4d: FF erase end failed: {exc}",
+                            flush=True,
+                        )
+                    self._recompute_ff_rumble()
+            elif ev.type == ecodes.EV_FF:
+                eid = int(ev.code)
+                if ev.value:
+                    if eid in self._ff_effects:
+                        self._ff_playing.add(eid)
+                        self._recompute_ff_rumble()
+                else:
+                    if eid in self._ff_playing:
+                        self._ff_playing.discard(eid)
+                        self._recompute_ff_rumble()
 
     def _publish_uinput(self, report: V1Report | BtHidReport) -> None:
         ui = self.ui
@@ -251,6 +517,30 @@ class Daemon:
                 ui.write(ecodes.EV_ABS, abs_code, value)
                 last[key] = value
         ui.syn()
+        if isinstance(report, V1Report):
+            self._publish_motion(report)
+
+    def _publish_motion(self, report: V1Report) -> None:
+        motion = self.motion
+        if motion is None:
+            return
+        accel, gyro = _motion_axes(report.accel, report.gyro)
+        last = self._motion_last
+        changed = False
+        for abs_code, value, key in (
+            (ecodes.ABS_X, accel[0], "ax"),
+            (ecodes.ABS_Y, accel[1], "ay"),
+            (ecodes.ABS_Z, accel[2], "az"),
+            (ecodes.ABS_RX, gyro[0], "gx"),
+            (ecodes.ABS_RY, gyro[1], "gy"),
+            (ecodes.ABS_RZ, gyro[2], "gz"),
+        ):
+            if last.get(key) != value:
+                motion.write(ecodes.EV_ABS, abs_code, value)
+                last[key] = value
+                changed = True
+        if changed:
+            motion.syn()
 
     def _broadcast_subscribers(self, obj: dict[str, Any]) -> None:
         if not self._subscribers:
@@ -431,7 +721,8 @@ class Daemon:
             except OSError:
                 pass
             return
-        if not force and (now - self._rumble_last) < 0.025:
+        # SDL's rumble thread paces ~10 ms; 15 ms is a calm middle ground.
+        if not force and (now - self._rumble_last) < 0.015:
             return
         try:
             self.dev.rumble(self._rumble_lo, self._rumble_hi)
@@ -667,14 +958,20 @@ class Daemon:
                 flush=True,
             )
             if self.ui is None:
-                self.ui = UInput(
-                    CAP,
-                    name="Flydigi Vader 4 Pro",
+                self.ui = self._make_uinput(
                     vendor=BT_VID,
                     product=BT_PID,
                     version=0x0101,
                     bustype=ecodes.BUS_BLUETOOTH,
                 )
+            # BT DInput has no IMU stream — drop any leftover USB motion node.
+            if self.motion is not None:
+                try:
+                    self.motion.close()
+                except OSError:
+                    pass
+                self.motion = None
+                self._motion_last.clear()
             self._broadcast_presence(True)
             return
 
@@ -694,14 +991,26 @@ class Daemon:
             time.sleep(1.0)
             return
         if self.ui is None:
-            self.ui = UInput(
-                CAP,
-                name="Flydigi Vader 4 Pro",
+            self.ui = self._make_uinput(
                 vendor=VID,
                 product=PID,
                 version=0x0111,
                 bustype=ecodes.BUS_USB,
             )
+        if self.motion is None:
+            try:
+                self.motion = self._make_motion_uinput(
+                    vendor=VID,
+                    product=PID,
+                    version=0x0111,
+                    bustype=ecodes.BUS_USB,
+                )
+            except OSError as exc:
+                print(
+                    f"flydigi-vader4d: motion uinput unavailable ({exc})",
+                    flush=True,
+                )
+                self.motion = None
         try:
             self._info = self.dev.wait_device_info(timeout=1.5)
             print(
@@ -744,12 +1053,19 @@ class Daemon:
                     time.sleep(0.2)
                     self._reconnect()
                     continue
+                ui_fd = self.ui.fd if self.ui is not None else None
                 fds = [
                     *src_fds,
                     self._listen.fileno(),
                     *[c.fileno() for c in self._clients],
                 ]
-                timeout = 0.025 if self._rumble_until > time.monotonic() else 1.0
+                if ui_fd is not None:
+                    fds.append(ui_fd)
+                timeout = (
+                    0.015
+                    if self._rumble_until > time.monotonic() or self._ff_playing
+                    else 1.0
+                )
                 try:
                     r, _, _ = select.select(fds, [], [], timeout)
                 except (ValueError, OSError):
@@ -757,6 +1073,9 @@ class Daemon:
                     continue
 
                 self._pump_rumble()
+
+                if ui_fd is not None and ui_fd in r:
+                    self._handle_uinput_ff()
 
                 if self._listen.fileno() in r:
                     self._accept()
@@ -835,12 +1154,7 @@ class Daemon:
             except OSError:
                 pass
             self.bt = None
-        if self.ui:
-            try:
-                self.ui.close()
-            except OSError:
-                pass
-            self.ui = None
+        self._close_uinput()
         while not self.stop:
             try:
                 self.open_device()
@@ -865,9 +1179,7 @@ class Daemon:
                 self.sock_path.unlink()
             except OSError:
                 pass
-        if self.ui:
-            self.ui.close()
-            self.ui = None
+        self._close_uinput()
         self.actions.close()
         if self.dev:
             self.dev.close()

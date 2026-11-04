@@ -1,12 +1,18 @@
-# Flydigi Vader 4 Pro — USB / 2.4G DInput composite 04b4:2412
+# Flydigi Vader 4 Pro — hidraw for the daemon (IF2 / BT).
 KERNEL=="hidraw*", ATTRS{idVendor}=="04b4", ATTRS{idProduct}=="2412", MODE="0660", TAG+="uaccess", GROUP="input"
-
-# Hide incomplete USB IF0 joystick / IF1 mouse; daemon publishes full pad via uinput.
-SUBSYSTEM=="input", ATTRS{idVendor}=="04b4", ATTRS{idProduct}=="2412", ENV{ID_INPUT_JOYSTICK}=="1", ENV{LIBINPUT_IGNORE_DEVICE}="1"
-SUBSYSTEM=="input", ATTRS{idVendor}=="04b4", ATTRS{idProduct}=="2412", ENV{ID_INPUT_MOUSE}=="1", ENV{LIBINPUT_IGNORE_DEVICE}="1"
-
-# Bluetooth DInput (blue LED) — Flydigi VADER4P  d7d7:0041
 KERNEL=="hidraw*", ATTRS{idVendor}=="d7d7", ATTRS{idProduct}=="0041", MODE="0660", TAG+="uaccess", GROUP="input"
-# Prefer our uinput republish over the raw hid-generic node (consumer-key noise).
-SUBSYSTEM=="input", ATTRS{idVendor}=="d7d7", ATTRS{idProduct}=="0041", ENV{ID_INPUT_JOYSTICK}=="1", ENV{LIBINPUT_IGNORE_DEVICE}="1"
-SUBSYSTEM=="input", ATTRS{idVendor}=="d7d7", ATTRS{idProduct}=="0041", ENV{ID_INPUT_KEY}=="1", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+
+# Drop leftover seat ACLs on raw USB/BT event nodes (69 clears tags before
+# first probe; this catches already-initialized nodes after a rules update).
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_VENDOR_ID}=="04b4", ENV{ID_MODEL_ID}=="2412", ENV{ID_USB_INTERFACE_NUM}=="?*", \
+  MODE="0600", GROUP="root", TAG-="uaccess", TAG-="seat", ENV{LIBINPUT_IGNORE_DEVICE}="1", RUN{builtin}+="uaccess"
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_VENDOR_ID}=="d7d7", ENV{ID_MODEL_ID}=="0041", ENV{ID_BUS}=="bluetooth", \
+  MODE="0600", GROUP="root", TAG-="uaccess", TAG-="seat", ENV{LIBINPUT_IGNORE_DEVICE}="1", RUN{builtin}+="uaccess"
+
+# Daemon motion node (INPUT_PROP_ACCELEROMETER) — not a laptop IMU / joydev pad.
+# Accelerometers do not get uaccess via 70-uaccess.rules (only joysticks do).
+# This file is numbered 99 (after 73-seat-late), so apply the seat ACL ourselves.
+SUBSYSTEM=="input", ATTRS{name}=="Flydigi Vader 4 Pro Motion", MODE="0660", GROUP="input", \
+  TAG+="uaccess", TAG+="seat", RUN{builtin}+="uaccess", \
+  ENV{LIBINPUT_IGNORE_DEVICE}="1", ENV{ID_INPUT_JOYSTICK}="0", \
+  ENV{IIO_SENSOR_PROXY_TYPE}=""

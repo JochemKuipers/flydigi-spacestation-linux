@@ -1,0 +1,15 @@
+# Hide stock hid-generic nodes from apps (Dolphin/SDL/evdev). Must run *before*
+# 70-uaccess.rules so they never get seat ACLs. Daemon republishes via uinput
+# (phys=flydigi-vader4d) which has no ID_USB_INTERFACE_NUM / no BT bus.
+
+# USB / 2.4G 04b4:2412 — every real USB interface input (IF0 js, IF1 mouse, …).
+# Match ENV (not ATTRS{phys}+ATTRS{idVendor}): all ATTRS in one rule must share
+# the same parent, and phys lives on input while idVendor lives on USB.
+SUBSYSTEM=="input", ENV{ID_VENDOR_ID}=="04b4", ENV{ID_MODEL_ID}=="2412", ENV{ID_USB_INTERFACE_NUM}=="?*", \
+  ENV{ID_INPUT_JOYSTICK}="", ENV{ID_INPUT_MOUSE}="", ENV{ID_INPUT_KEY}="", \
+  ENV{LIBINPUT_IGNORE_DEVICE}="1", MODE="0600", GROUP="root"
+
+# Bluetooth DInput d7d7:0041 — noisy KEY_ENTER / media-key node.
+SUBSYSTEM=="input", ENV{ID_VENDOR_ID}=="d7d7", ENV{ID_MODEL_ID}=="0041", ENV{ID_BUS}=="bluetooth", \
+  ENV{ID_INPUT_JOYSTICK}="", ENV{ID_INPUT_KEY}="", \
+  ENV{LIBINPUT_IGNORE_DEVICE}="1", MODE="0600", GROUP="root"

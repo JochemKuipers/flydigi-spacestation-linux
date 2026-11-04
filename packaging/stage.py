@@ -60,9 +60,13 @@ def stage_driver(dest: Path, *, layout: str = "site-packages") -> None:
     unit.parent.mkdir(parents=True)
     shutil.copy2(ROOT / "packaging/systemd/flydigi-vader4d.service", unit)
 
-    rules = dest / "usr/lib/udev/rules.d/99-flydigi-vader4.rules"
-    rules.parent.mkdir(parents=True)
-    shutil.copy2(ROOT / "udev/99-flydigi-vader4.rules", rules)
+    rules_dir = dest / "usr/lib/udev/rules.d"
+    rules_dir.mkdir(parents=True)
+    for name in (
+        "69-flydigi-vader4-hide-raw.rules",
+        "99-flydigi-vader4.rules",
+    ):
+        shutil.copy2(ROOT / "udev" / name, rules_dir / name)
 
     doc = dest / "usr/share/doc/flydigi-vader4d"
     doc.mkdir(parents=True)

@@ -458,8 +458,7 @@ class FeelPage(QWidget):
     def _test_rumble(self) -> None:
         if not self._usb_ok():
             return
-        # Scale UI 0–100 → rumble bytes roughly
-        lo = int(self.motor_l.value() * 2.55)
-        hi = int(self.motor_r.value() * 2.55)
-        self._rpc("rumble", low=lo, high=hi, duration_ms=1200)
-        QTimer.singleShot(500, lambda: self._rpc("rumble", low=0, high=0))
+        # Scale UI 0–100 → rumble bytes; soft-cap so Test Motors stays gentle.
+        lo = min(180, int(self.motor_l.value() * 2.55))
+        hi = min(180, int(self.motor_r.value() * 2.55))
+        self._rpc("rumble", low=lo, high=hi, duration_ms=400)
